@@ -9,6 +9,9 @@
 #        AWS_REGION             e.g. eu-central-1
 #        EVIDENCE_SOURCES       optional, space separated, e.g. "lightsail"
 #                               or "aws lightsail" (default: "aws")
+#        EVIDENCE_REGIONS       optional: regions to check, space separated,
+#                               e.g. "eu-west-3 eu-central-1", or "all" for
+#                               every region (default: AWS_REGION)
 #
 # Reports are uploaded as workflow artifacts (kept 90 days), not committed,
 # so account details never land in the public repo.
@@ -29,11 +32,13 @@ jobs:
     if: ${{ vars.AWS_EVIDENCE_ROLE_ARN != '' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.12"
-      - uses: aws-actions/configure-aws-credentials@v6
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
         with:
           role-to-assume: ${{ vars.AWS_EVIDENCE_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -41,12 +46,18 @@ jobs:
       - name: Collect evidence
         env:
           SOURCES: ${{ vars.EVIDENCE_SOURCES || 'aws' }}
-          REGION: ${{ vars.AWS_REGION }}
+          REGIONS: ${{ vars.EVIDENCE_REGIONS || vars.AWS_REGION }}
         run: |
+          # $REGIONS is split on spaces on purpose: one argument per region.
+          if [ "$REGIONS" = "all" ]; then
+            region_args="--all-regions"
+          else
+            region_args="--region $REGIONS"
+          fi
           for source in $SOURCES; do
-            iso27001-evidence collect --source "$source" --region "$REGION" --out "reports/$source"
+            iso27001-evidence collect --source "$source" $region_args --out "reports/$source"
           done
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: iso27001-evidence-${{ github.run_id }}
           path: reports/

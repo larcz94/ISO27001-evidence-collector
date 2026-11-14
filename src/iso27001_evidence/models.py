@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
+# Worst first. Used to sort findings in reports.
+SEVERITIES = ("critical", "high", "medium", "low")
+
 
 class Status(str, Enum):
     PASS = "PASS"            # control requirement met
@@ -24,7 +27,10 @@ class Evidence:
     summary: str                      # one human-readable line for the auditor
     details: dict[str, Any] = field(default_factory=dict)
     remediation: str = ""             # how to fix it, set when a check fails
+    title: str = ""                   # plain-English name of the check
+    severity: str = ""                # critical, high, medium or low
     scope: str = ""                   # e.g. AWS account ID / tenant ID
+    region: str = ""                  # e.g. "eu-west-3", or "global" for account-wide checks
     collected_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
     )

@@ -44,15 +44,50 @@ REMEDIATION = {
 }
 
 
+CHECK_INFO = {
+    "aws.iam.root_mfa": ("Root user should have MFA", "critical"),
+    "aws.iam.console_users_mfa": ("IAM console users should have MFA", "high"),
+    "aws.iam.password_policy": ("IAM password policy should be strong", "medium"),
+    "aws.cloudtrail.multi_region_logging": ("CloudTrail should log all regions", "high"),
+    "aws.s3.bucket_protection": ("S3 buckets should be encrypted and not public", "high"),
+    "aws.ec2.ebs_default_encryption": ("EBS volumes should be encrypted by default", "medium"),
+    "aws.securityhub.findings_summary":
+        ("Security Hub should be on with no open critical or high findings", "high"),
+    "aws.config.recorder_and_compliance":
+        ("AWS Config should be recording with compliant rules", "medium"),
+}
+
+# IAM, S3 bucket listing and multi-region CloudTrail cover the whole account.
+# EBS default encryption, Security Hub and AWS Config are set per region.
+GLOBAL_CHECKS = frozenset({
+    "aws.iam.root_mfa",
+    "aws.iam.console_users_mfa",
+    "aws.iam.password_policy",
+    "aws.cloudtrail.multi_region_logging",
+    "aws.s3.bucket_protection",
+})
+
+
 class AWSCollector(BaseCollector):
     source = "aws"
     remediation = REMEDIATION
+    check_info = CHECK_INFO
+    global_checks = GLOBAL_CHECKS
 
-    def __init__(self, session: boto3.Session | None = None, region: str | None = None) -> None:
+    def __init__(self, session: boto3.Session | None = None, region: str | None = None,
+                 scope: str | None = None) -> None:
         super().__init__()
         self.session = session or boto3.Session(region_name=region)
-        self.region = self.session.region_name or "eu-central-1"
-        self.scope = self._account_id()
+        self.region = region or self.session.region_name or "eu-central-1"
+        # In a multi-region run the account ID is looked up once and passed in.
+        self.scope = scope or self._account_id()
+
+    @classmethod
+    def available_regions(cls, session: boto3.Session | None = None) -> list[str]:
+        """Regions that are enabled for this account."""
+        session = session or boto3.Session()
+        ec2 = session.client("ec2", region_name=session.region_name or "us-east-1")
+        return sorted(r["RegionName"] for r in ec2.describe_regions()["Regions"])
 
     # ---------- helpers ----------
     def _client(self, name: str):

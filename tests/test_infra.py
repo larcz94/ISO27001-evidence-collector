@@ -6,6 +6,7 @@ These tests fail if one is changed without the other.
 """
 
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -51,3 +52,19 @@ def test_trust_policy_is_limited_to_one_repo_and_branch():
     sub = cond["StringEquals"]["token.actions.githubusercontent.com:sub"]["Fn::Sub"]
     assert sub == "repo:${GitHubOwner}/${GitHubRepo}:ref:refs/heads/${GitHubBranch}"
     assert cond["StringEquals"]["token.actions.githubusercontent.com:aud"] == "sts.amazonaws.com"
+
+
+def test_workflow_actions_are_pinned_to_a_commit_hash():
+    # A tag such as @v7 can be moved to different code. A full commit hash cannot.
+    workflows = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
+    assert workflows
+    for path in workflows:
+        for used in re.findall(r"uses:\s*(\S+)", path.read_text(encoding="utf-8")):
+            assert re.search(r"@[0-9a-f]{40}$", used), f"{path.name}: {used} is not pinned"
+
+
+def test_workflows_do_not_grant_write_access_by_default():
+    for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+        top = workflow.get("permissions", {})
+        assert top.get("contents") == "read", f"{path.name}: top-level contents must be read"

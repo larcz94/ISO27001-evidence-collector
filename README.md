@@ -15,34 +15,50 @@ writes an audit-ready report in Markdown, HTML and JSON.
 $ iso27001-evidence collect --source lightsail --region eu-central-1
 FAIL  lightsail.bucket.access_logging            1 of 2 buckets have access logging enabled
 FAIL  lightsail.bucket.public_access             1 of 2 buckets are private with no public object overrides
-PASS  lightsail.certificate.expiry               0 of 1 certificates expire within 30 days
+PASS  lightsail.certificate.expiry               None of the 1 issued certificates expire within 30 days
 PASS  lightsail.database.backup_and_exposure     1 of 1 databases have backups on and are not publicly accessible
 PASS  lightsail.disk.auto_snapshots              1 of 1 block storage disks have automatic snapshots enabled
 FAIL  lightsail.instance.admin_ports_restricted  1 admin port(s) open to the internet across 2 instance(s)
 FAIL  lightsail.instance.auto_snapshots          1 of 2 instances have automatic snapshots enabled
-FAIL  lightsail.instance.blueprint_supported     1 of 2 instances run a blueprint (OS image) that Lightsail has retired
+FAIL  lightsail.instance.blueprint_supported     1 of 2 instances run a retired blueprint (OS image)
 FAIL  lightsail.instance.imdsv2_required         1 of 2 instances require IMDSv2
 PASS  lightsail.loadbalancer.https_only          1 of 1 load balancers serve HTTPS and redirect HTTP to HTTPS
 
-Markdown: reports/evidence-20261114T172900Z.md
-HTML:     reports/evidence-20261114T172900Z.html
-JSON:     reports/evidence-20261114T172900Z.json
+6 finding(s) to fix. The report lists the affected resources and how to fix each one.
+
+Markdown: reports/iso27001-evidence_lightsail_2026-11-14_172900Z.md
+HTML:     reports/iso27001-evidence_lightsail_2026-11-14_172900Z.html
+JSON:     reports/iso27001-evidence_lightsail_2026-11-14_172900Z.json
 ```
 
-The output above comes from fake data. Full sample reports:
+## The report
+
+![HTML evidence report with summary tiles and findings sorted by severity](docs/report-preview.png)
+
+The screenshot and the output above come from fake data. Full sample reports:
 [AWS](examples/sample-report.md), [Lightsail](examples/sample-report-lightsail.md)
 and a combined [HTML report](examples/sample-report-all.html) (download and open it in a browser).
 
+- **One file, no dependencies.** The HTML report has inline styles, no scripts
+  and no external files. Open it offline, attach it to an audit ticket or
+  print it to PDF. It follows the light or dark setting of your system.
+- **File names you can sort and find.** `iso27001-evidence_<source>_<date>_<time>Z`
+  says what the file is, what was checked and when (UTC).
+- **Summary first.** Counts, a results bar and the number of controls with gaps.
+
 ## Findings and fixes
 
-A FAIL is only useful if you know what failed and what to do about it. For
-every failed check the report names the affected resources, the Annex A
-controls and a fix suggestion:
+A FAIL is only useful if you know what failed and what to do about it. Every
+check has a plain-English title and a severity (critical, high, medium or
+low). Findings are sorted worst first, and each one names the affected
+resources, the Annex A controls and a fix suggestion:
 
 ```markdown
-### 1. lightsail.instance.admin_ports_restricted
+### 2. [HIGH] SSH and RDP should not be open to the internet (eu-central-1)
 
+- **Check:** `lightsail.instance.admin_ports_restricted`
 - **Finding:** 1 admin port(s) open to the internet across 2 instance(s)
+- **Region:** eu-central-1
 - **Controls:** A.8.20
 - **Affected (exposed admin ports):**
   - instance: worker-1; port: 22; service: SSH; open to: 0.0.0.0/0
@@ -53,8 +69,10 @@ controls and a fix suggestion:
 ```
 
 Fix suggestions are general guidance. Review them against your own policies
-before you change a production system. The same data is in the JSON file
-(`details` and `remediation` fields) if you want to create tickets from it.
+before you change a production system. Severity is a default rating, not a
+risk assessment of your environment. The same data is in the JSON file
+(`title`, `severity`, `region`, `details` and `remediation` fields) if you
+want to create tickets from it.
 
 ## How it works
 
@@ -106,6 +124,30 @@ Reports are written to `reports/`, which is git-ignored because real reports
 contain account details. Add `--fail-on-gap` to get exit code 1 when a check
 fails, which is useful in CI.
 
+### One region, several regions or all regions
+
+```bash
+iso27001-evidence collect --source lightsail --region eu-west-3                 # one region
+iso27001-evidence collect --source lightsail --region eu-west-3 eu-central-1    # several
+iso27001-evidence collect --source lightsail --all-regions                      # every region
+```
+
+All regions go into **one** report:
+
+- Every result and finding shows its region.
+- Account-wide checks (IAM, S3, CloudTrail) run once. Only regional checks
+  (EBS encryption, Security Hub, AWS Config and all Lightsail checks) repeat
+  per region.
+- Regions with nothing to check are folded into one line, for example
+  "Nothing to check in 14 regions: ...". That line is evidence too: it shows
+  the regions were looked at and were empty.
+
+`--all-regions` is the safer choice for an audit, because it also finds
+resources that someone created in a region nobody looks at. It asks AWS for
+the region list (`lightsail:GetRegions` or `ec2:DescribeRegions`, both in the
+read-only policies) and takes longer, since every region is a separate set of
+API calls.
+
 ### Permissions
 
 The tool never changes anything. Give the user or role that runs it only the
@@ -121,8 +163,8 @@ policy for the sources you use:
 ### Amazon Lightsail (10 checks)
 
 Small setups often run on Lightsail instead of EC2, and they are still in
-scope for an ISMS. Lightsail is regional, so run the collector once per
-region you use.
+scope for an ISMS. Lightsail is regional, so name the regions you use or
+pass `--all-regions`.
 
 | Check ID | What it verifies | Annex A |
 |---|---|---|
@@ -171,8 +213,9 @@ no access keys to store or rotate.
    IAM is free, so this stack has no cost. If your account already has a GitHub
    OIDC provider, add `CreateOIDCProvider=false`.
 2. In the repository settings, add these **variables** (not secrets):
-   `AWS_EVIDENCE_ROLE_ARN` (the stack output `RoleArn`), `AWS_REGION`, and
-   optionally `EVIDENCE_SOURCES` (for example `lightsail` or `aws lightsail`).
+   `AWS_EVIDENCE_ROLE_ARN` (the stack output `RoleArn`) and `AWS_REGION`.
+   Optional: `EVIDENCE_SOURCES` (for example `lightsail` or `aws lightsail`)
+   and `EVIDENCE_REGIONS` (for example `eu-west-3 eu-central-1`, or `all`).
 3. Run the workflow by hand once from the Actions tab to test it.
 
 Reports are uploaded as private workflow artifacts and kept for 90 days. They
@@ -198,7 +241,7 @@ pytest -q
 - [x] Markdown, HTML and JSON reports
 - [x] Findings with affected resources and fix suggestions
 - [x] GitHub Actions scheduled run with OIDC and a CloudFormation role template
-- [ ] Checks across all regions in one run
+- [x] Several regions or all regions in one run and one report
 - [ ] Publish to PyPI
 - [ ] GitLab / GitHub collector (branch protection, reviews)
 - [ ] Microsoft 365 / Entra ID collector
@@ -209,6 +252,53 @@ pytest -q
 As an ISMS lead and DevOps engineer, I found that most audit effort goes into
 collecting evidence, not fixing gaps. This project automates the collection part.
 
+## How this compares to Prowler and AWS Audit Manager
+
+This is a small tool with a narrow goal. Bigger tools exist, and for many
+teams they are the better choice. Facts below were checked in November 2026,
+so check the linked pages for the current state.
+
+| | This tool | [Prowler](https://github.com/prowler-cloud/prowler) | [AWS Audit Manager](https://docs.aws.amazon.com/audit-manager/latest/userguide/iso-27001-2013.html) |
+|---|---|---|---|
+| What it is | Small open source CLI | Large open source security platform | Managed AWS service |
+| Coverage | 18 checks: 8 AWS, 10 Lightsail | Hundreds of checks. Its ISO 27001:2022 framework for AWS maps 92 requirements to 316 checks | Prebuilt ISO/IEC 27001:2013 Annex A framework, most of its controls are manual |
+| ISO 27001 version | 2022 | 2022 | 2013 |
+| Cost | Free, read-only API calls | Free (open source), paid cloud version | Priced per resource assessment |
+| Availability | Open source | Open source | AWS states it is no longer open to new customers |
+| Written for | The person who prepares the audit | Security engineers | Audit and compliance teams |
+
+**Use Prowler** when you want broad security coverage of a real AWS
+environment: many services, many accounts, several frameworks. It is the
+right tool for that job, and this project does not try to replace it.
+
+**Use this tool** when:
+
+- you run a small setup, often on Amazon Lightsail, and want a short report
+  you can read in ten minutes,
+- you prepare the audit yourself and want each result tied to an Annex A
+  control, with a note on what else the auditor will ask for,
+- you want code small enough to read and trust before you give it access to
+  your account, or to learn from.
+
+The two can also be used together: Prowler for depth, this tool for a short
+evidence report per control.
+
+## Development and releases
+
+- `main` is protected. Every change comes in through a pull request and must
+  pass lint and tests on Python 3.10, 3.12 and 3.13.
+- GitHub Actions are pinned to full commit hashes and run with read-only
+  permissions by default.
+- A release is a version tag on `main`. The [release workflow](.github/workflows/release.yml)
+  checks that the tag is on `main` and matches the package version, runs the
+  tests again, then publishes the package with SHA-256 checksums.
+
+Install a specific release:
+
+```bash
+pip install "git+https://github.com/larcz94/ISO27001-evidence-collector@v1.0.0"
+```
+
 ## Security
 
 Please do not open a public issue for a security problem. Use **Report a vulnerability**
@@ -216,10 +306,11 @@ under the Security tab of this repository.
 
 ## Contributing
 
-New collectors and checks are welcome. Collectors must stay read-only, every new
-API call goes into the matching file in `policies/` and into
-`infra/github-oidc-role.yaml`, and every check needs a test.
-Open an issue first for larger changes.
+New collectors and checks are welcome. Open an issue first for larger changes,
+then send a pull request from a branch. Collectors must stay read-only, every
+new API call goes into the matching file in `policies/` and into
+`infra/github-oidc-role.yaml`, and every check needs a title, a severity, a
+fix suggestion and a test. The pull request template has the full checklist.
 
 ## License
 

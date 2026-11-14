@@ -6,6 +6,7 @@
       "Effect": "Allow",
       "Action": [
         "sts:GetCallerIdentity",
+        "lightsail:GetRegions",
         "lightsail:GetInstances",
         "lightsail:GetInstancePortStates",
         "lightsail:GetBuckets",

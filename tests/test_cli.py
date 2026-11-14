@@ -20,8 +20,8 @@ def fake_credentials(monkeypatch):
 @mock_aws
 def test_collect_writes_reports_with_builtin_mapping(tmp_path, capsys):
     assert main(["collect", "--source", "aws", "--out", str(tmp_path)]) == 0
-    md = list(tmp_path.glob("evidence-*.md"))
-    js = list(tmp_path.glob("evidence-*.json"))
+    md = list(tmp_path.glob("iso27001-evidence_*.md"))
+    js = list(tmp_path.glob("iso27001-evidence_*.json"))
     assert len(md) == 1 and len(js) == 1
     assert "A.8.15" in md[0].read_text(encoding="utf-8")
     assert all("check_id" in e for e in json.loads(js[0].read_text(encoding="utf-8")))
@@ -36,7 +36,7 @@ def test_fail_on_gap_returns_exit_code_1(tmp_path):
 @mock_aws
 def test_collect_also_writes_html_report(tmp_path):
     main(["collect", "--source", "aws", "--out", str(tmp_path)])
-    html = list(tmp_path.glob("evidence-*.html"))
+    html = list(tmp_path.glob("iso27001-evidence_*.html"))
     assert len(html) == 1
     text = html[0].read_text(encoding="utf-8")
     assert text.startswith("<!DOCTYPE html>")
