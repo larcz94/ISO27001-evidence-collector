@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iso27001-evidence-collector"
-version = "0.5.0"
+version = "1.0.0"
 description = "Automated ISO/IEC 27001:2022 Annex A evidence collection across enterprise systems"
 readme = "README.md"
 license = "MIT"
@@ -13,7 +13,7 @@ authors = [{ name = "Ahesh Lakmal" }]
 requires-python = ">=3.10"
 keywords = ["iso27001", "aws", "lightsail", "compliance", "audit", "security", "isms"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
     "Programming Language :: Python :: 3",

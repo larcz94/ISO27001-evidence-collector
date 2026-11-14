@@ -1,7 +1,7 @@
 # ISO/IEC 27001:2022 Evidence Report
 
 - **Framework:** ISO/IEC 27001:2022
-- **Generated:** 2026-11-14 21:59 UTC
+- **Generated:** 2026-11-14 22:17 UTC
 - **Scope:** aws:123456789012
 - **Regions (3):** eu-central-1, eu-west-3, us-east-1
 - **Checks run:** 30 (PASS 4, FAIL 6, ERROR 0, N/A 20)
@@ -98,83 +98,83 @@ By severity: 2 high, 3 medium, 1 low.
 ### A.8.3 Information access restriction
 
 - **FAIL** Buckets should be private (`lightsail.bucket.public_access`): 1 of 2 buckets are private with no public object overrides  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Buckets should be private (`lightsail.bucket.public_access`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 - **PASS** Databases should be backed up and not public (`lightsail.database.backup_and_exposure`): 1 of 1 databases have backups on and are not publicly accessible  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Databases should be backed up and not public (`lightsail.database.backup_and_exposure`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 
 ### A.8.8 Management of technical vulnerabilities
 
 - **FAIL** Instances should run a supported OS image (`lightsail.instance.blueprint_supported`): 1 of 2 instances run a retired blueprint (OS image)  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Instances should run a supported OS image (`lightsail.instance.blueprint_supported`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 
 **Also provide:** Vulnerability management procedure and remediation tickets.
 
 ### A.8.9 Configuration management
 
 - **FAIL** Instances should require IMDSv2 (`lightsail.instance.imdsv2_required`): 1 of 2 instances require IMDSv2  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Instances should require IMDSv2 (`lightsail.instance.imdsv2_required`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 
 **Also provide:** Approved baseline configurations (e.g. CIS benchmark choice).
 
 ### A.8.13 Information backup
 
 - **FAIL** Instances should have automatic snapshots (`lightsail.instance.auto_snapshots`): 1 of 2 instances have automatic snapshots enabled  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Instances should have automatic snapshots (`lightsail.instance.auto_snapshots`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 - **PASS** Block storage disks should have automatic snapshots (`lightsail.disk.auto_snapshots`): 1 of 1 block storage disks have automatic snapshots enabled  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Block storage disks should have automatic snapshots (`lightsail.disk.auto_snapshots`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 - **PASS** Databases should be backed up and not public (`lightsail.database.backup_and_exposure`): 1 of 1 databases have backups on and are not publicly accessible  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Databases should be backed up and not public (`lightsail.database.backup_and_exposure`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 
 **Also provide:** Backup policy, retention period and records of restore tests.
 
 ### A.8.15 Logging
 
 - **FAIL** Buckets should have access logging (`lightsail.bucket.access_logging`): 1 of 2 buckets have access logging enabled  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Buckets should have access logging (`lightsail.bucket.access_logging`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 
 **Also provide:** Logging policy, retention period, log review records.
 
 ### A.8.20 Networks security
 
 - **FAIL** SSH and RDP should not be open to the internet (`lightsail.instance.admin_ports_restricted`): 1 admin port(s) open to the internet across 2 instance(s)  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** SSH and RDP should not be open to the internet (`lightsail.instance.admin_ports_restricted`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 - **PASS** Databases should be backed up and not public (`lightsail.database.backup_and_exposure`): 1 of 1 databases have backups on and are not publicly accessible  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Databases should be backed up and not public (`lightsail.database.backup_and_exposure`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 
 **Also provide:** Network diagram and firewall rule review records.
 
 ### A.8.24 Use of cryptography
 
 - **PASS** Load balancers should enforce HTTPS (`lightsail.loadbalancer.https_only`): 1 of 1 load balancers serve HTTPS and redirect HTTP to HTTPS  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Load balancers should enforce HTTPS (`lightsail.loadbalancer.https_only`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 - **PASS** Certificates should not be about to expire (`lightsail.certificate.expiry`): None of the 1 issued certificates expire within 30 days  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012, region eu-central-1_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012, region eu-central-1_
 - **N/A** Certificates should not be about to expire (`lightsail.certificate.expiry`): Nothing to check in 2 regions: eu-west-3, us-east-1  
-  _collected 2026-11-14T21:59:20+00:00, scope aws:123456789012_
+  _collected 2026-11-14T22:17:38+00:00, scope aws:123456789012_
 
 **Also provide:** Cryptography policy and key management procedure.
 
 ---
-Generated by iso27001-evidence-collector 0.5.0
+Generated by iso27001-evidence-collector 1.0.0

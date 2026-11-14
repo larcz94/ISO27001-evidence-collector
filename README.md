@@ -296,7 +296,7 @@ evidence report per control.
 Install a specific release:
 
 ```bash
-pip install "git+https://github.com/larcz94/ISO27001-evidence-collector@v0.5.0"
+pip install "git+https://github.com/larcz94/ISO27001-evidence-collector@v1.0.0"
 ```
 
 ## Security
