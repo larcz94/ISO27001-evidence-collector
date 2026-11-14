@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ISO27001LightsailEvidenceReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity",
+        "lightsail:GetInstances",
+        "lightsail:GetInstancePortStates",
+        "lightsail:GetBuckets",
+        "lightsail:GetRelationalDatabases",
+        "lightsail:GetLoadBalancers",
+        "lightsail:GetCertificates"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

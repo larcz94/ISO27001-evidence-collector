@@ -1,0 +1,95 @@
+# Mapping of ISO/IEC 27001:2022 Annex A controls to automated checks.
+#
+# One check can support several controls. Automated evidence supports a
+# control - it rarely proves it on its own. Policies, procedures and
+# interviews are still needed; the "note" field says what else to provide.
+#
+# Check IDs: <source>.<service>.<check>. Planned sources (m365, azure,
+# gitlab, linux) are listed so contributors can see where they fit.
+
+framework: ISO/IEC 27001:2022
+controls:
+  A.5.15:
+    title: Access control
+    checks: []          # planned: m365.entra.conditional_access
+    note: Access control policy document; periodic access reviews.
+
+  A.5.17:
+    title: Authentication information
+    checks:
+      - aws.iam.password_policy
+      - aws.iam.root_mfa
+    note: Password / authentication policy; process for issuing credentials.
+
+  A.8.2:
+    title: Privileged access rights
+    checks:
+      - aws.iam.root_mfa      # planned: m365.entra.admin_roles
+    note: List of privileged roles and approval records.
+
+  A.8.3:
+    title: Information access restriction
+    checks:
+      - aws.s3.bucket_protection
+      - lightsail.bucket.public_access
+      - lightsail.database.backup_and_exposure
+
+  A.8.5:
+    title: Secure authentication
+    checks:
+      - aws.iam.root_mfa
+      - aws.iam.console_users_mfa   # planned: m365.entra.mfa_registration
+
+  A.8.8:
+    title: Management of technical vulnerabilities
+    checks:
+      - aws.securityhub.findings_summary   # planned: linux.patch_level
+    note: Vulnerability management procedure and remediation tickets.
+
+  A.8.9:
+    title: Configuration management
+    checks:
+      - aws.config.recorder_and_compliance
+    note: Approved baseline configurations (e.g. CIS benchmark choice).
+
+  A.8.13:
+    title: Information backup
+    checks:
+      - lightsail.instance.auto_snapshots
+      - lightsail.database.backup_and_exposure
+    note: Backup policy, retention period and records of restore tests.
+
+  A.8.15:
+    title: Logging
+    checks:
+      - aws.cloudtrail.multi_region_logging   # planned: linux.log_forwarding
+    note: Logging policy, retention period, log review records.
+
+  A.8.16:
+    title: Monitoring activities
+    checks:
+      - aws.securityhub.findings_summary
+
+  A.8.20:
+    title: Networks security
+    checks:
+      - lightsail.instance.admin_ports_restricted
+      - lightsail.database.backup_and_exposure
+    note: Network diagram and firewall rule review records.
+
+  A.8.24:
+    title: Use of cryptography
+    checks:
+      - aws.s3.bucket_protection
+      - aws.ec2.ebs_default_encryption
+      - lightsail.loadbalancer.https_only
+      - lightsail.certificate.expiry
+    note: Cryptography policy and key management procedure.
+
+  A.8.25:
+    title: Secure development life cycle
+    checks: []          # planned: gitlab.branch_protection, gitlab.mr_approvals
+
+  A.8.32:
+    title: Change management
+    checks: []          # planned: gitlab.mr_approvals

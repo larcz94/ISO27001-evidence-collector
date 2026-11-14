@@ -1,0 +1,55 @@
+# Scheduled evidence collection from AWS using GitHub OIDC (no stored keys).
+#
+# Setup:
+#   1. In AWS IAM, add GitHub as an OIDC identity provider
+#      (token.actions.githubusercontent.com).
+#   2. Create a role that trusts this repo and attach the policy for each
+#      source you run: policies/aws-readonly-policy.json and/or
+#      policies/lightsail-readonly-policy.json.
+#   3. Add repository variables:
+#        AWS_EVIDENCE_ROLE_ARN  the role ARN
+#        AWS_REGION             e.g. eu-central-1
+#        EVIDENCE_SOURCES       optional, space separated, e.g. "lightsail"
+#                               or "aws lightsail" (default: "aws")
+#
+# Reports are uploaded as workflow artifacts (kept 90 days), not committed,
+# so account details never land in the public repo.
+
+name: collect-evidence
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"   # Mondays 05:17 UTC
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  aws:
+    if: ${{ vars.AWS_EVIDENCE_ROLE_ARN != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_EVIDENCE_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: pip install -e .
+      - name: Collect evidence
+        env:
+          SOURCES: ${{ vars.EVIDENCE_SOURCES || 'aws' }}
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          for source in $SOURCES; do
+            iso27001-evidence collect --source "$source" --region "$REGION" --out "reports/$source"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iso27001-evidence-${{ github.run_id }}
+          path: reports/
+          retention-days: 90

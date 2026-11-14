@@ -1,0 +1,28 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ISO27001EvidenceReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity",
+        "iam:GetAccountSummary",
+        "iam:GetAccountPasswordPolicy",
+        "iam:ListUsers",
+        "iam:GetLoginProfile",
+        "iam:ListMFADevices",
+        "cloudtrail:DescribeTrails",
+        "cloudtrail:GetTrailStatus",
+        "s3:ListAllMyBuckets",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetBucketPublicAccessBlock",
+        "ec2:GetEbsEncryptionByDefault",
+        "securityhub:DescribeHub",
+        "securityhub:GetFindings",
+        "config:DescribeConfigurationRecorderStatus",
+        "config:DescribeComplianceByConfigRule"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
