@@ -1,19 +1,31 @@
 name: tests
 
+# Runs on every pull request, and on main after a merge.
+# Actions are pinned to a full commit hash, so a moved tag cannot change
+# what runs here. The comment after each hash is the release it points to.
+
 on:
   push:
+    branches: [main]
   pull_request:
 
 # The default GITHUB_TOKEN only needs to read the code.
 permissions:
   contents: read
 
+# A new push to the same branch cancels the run that is still going.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.12"
       - run: pip install "ruff>=0.6" cfn-lint
@@ -26,10 +38,29 @@ jobs:
       matrix:
         python-version: ["3.10", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: pip install -e ".[dev]"
       - run: pytest -q
+
+  # One job that is green only when everything above is green. Branch
+  # protection requires this single check, so the rule does not need to
+  # change when a Python version is added to the matrix.
+  all-checks:
+    if: always()
+    needs: [lint, pytest]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless every job succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            [ "$result" = "success" ] || exit 1
+          done

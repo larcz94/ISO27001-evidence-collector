@@ -1,0 +1,65 @@
+name: release
+
+# Pushing a version tag (for example v0.5.0) creates a GitHub Release with
+# the built package and its checksums.
+#
+# Safety checks before anything is published:
+#   - the tagged commit must already be on main (so it went through a pull
+#     request and the tests),
+#   - the tag must match the version in pyproject.toml,
+#   - lint and tests must pass on the tagged commit.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to create the release, and nothing else
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Check that the tag is on main and matches the version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tag $TAG is not on main. Merge the pull request first, then tag main."
+            exit 1
+          fi
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          if [ "v$version" != "$TAG" ]; then
+            echo "Tag $TAG does not match version $version in pyproject.toml."
+            exit 1
+          fi
+
+      - name: Lint and test
+        run: |
+          pip install -e ".[dev]" build
+          ruff check src tests
+          pytest -q
+
+      - name: Build the package and checksums
+        run: |
+          python -m build
+          cd dist
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" dist/* --title "$TAG" --generate-notes --verify-tag

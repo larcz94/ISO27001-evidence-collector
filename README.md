@@ -252,6 +252,53 @@ pytest -q
 As an ISMS lead and DevOps engineer, I found that most audit effort goes into
 collecting evidence, not fixing gaps. This project automates the collection part.
 
+## How this compares to Prowler and AWS Audit Manager
+
+This is a small tool with a narrow goal. Bigger tools exist, and for many
+teams they are the better choice. Facts below were checked in November 2026,
+so check the linked pages for the current state.
+
+| | This tool | [Prowler](https://github.com/prowler-cloud/prowler) | [AWS Audit Manager](https://docs.aws.amazon.com/audit-manager/latest/userguide/iso-27001-2013.html) |
+|---|---|---|---|
+| What it is | Small open source CLI | Large open source security platform | Managed AWS service |
+| Coverage | 18 checks: 8 AWS, 10 Lightsail | Hundreds of checks. Its ISO 27001:2022 framework for AWS maps 92 requirements to 316 checks | Prebuilt ISO/IEC 27001:2013 Annex A framework, most of its controls are manual |
+| ISO 27001 version | 2022 | 2022 | 2013 |
+| Cost | Free, read-only API calls | Free (open source), paid cloud version | Priced per resource assessment |
+| Availability | Open source | Open source | AWS states it is no longer open to new customers |
+| Written for | The person who prepares the audit | Security engineers | Audit and compliance teams |
+
+**Use Prowler** when you want broad security coverage of a real AWS
+environment: many services, many accounts, several frameworks. It is the
+right tool for that job, and this project does not try to replace it.
+
+**Use this tool** when:
+
+- you run a small setup, often on Amazon Lightsail, and want a short report
+  you can read in ten minutes,
+- you prepare the audit yourself and want each result tied to an Annex A
+  control, with a note on what else the auditor will ask for,
+- you want code small enough to read and trust before you give it access to
+  your account, or to learn from.
+
+The two can also be used together: Prowler for depth, this tool for a short
+evidence report per control.
+
+## Development and releases
+
+- `main` is protected. Every change comes in through a pull request and must
+  pass lint and tests on Python 3.10, 3.12 and 3.13.
+- GitHub Actions are pinned to full commit hashes and run with read-only
+  permissions by default.
+- A release is a version tag on `main`. The [release workflow](.github/workflows/release.yml)
+  checks that the tag is on `main` and matches the package version, runs the
+  tests again, then publishes the package with SHA-256 checksums.
+
+Install a specific release:
+
+```bash
+pip install "git+https://github.com/larcz94/ISO27001-evidence-collector@v0.5.0"
+```
+
 ## Security
 
 Please do not open a public issue for a security problem. Use **Report a vulnerability**
@@ -259,10 +306,11 @@ under the Security tab of this repository.
 
 ## Contributing
 
-New collectors and checks are welcome. Collectors must stay read-only, every new
-API call goes into the matching file in `policies/` and into
-`infra/github-oidc-role.yaml`, and every check needs a test.
-Open an issue first for larger changes.
+New collectors and checks are welcome. Open an issue first for larger changes,
+then send a pull request from a branch. Collectors must stay read-only, every
+new API call goes into the matching file in `policies/` and into
+`infra/github-oidc-role.yaml`, and every check needs a title, a severity, a
+fix suggestion and a test. The pull request template has the full checklist.
 
 ## License
 
