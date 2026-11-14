@@ -50,9 +50,12 @@ def port(from_port, to_port, cidrs, state="open"):
             "state": state, "cidrs": cidrs, "ipv6Cidrs": []}
 
 
-def test_scope_includes_account_and_region(stubbed):
-    collector, _ = stubbed
-    assert collector.scope == f"aws:123456789012/{REGION}"
+def test_scope_is_the_account_and_region_is_separate(stubbed):
+    collector, stub = stubbed
+    assert collector.scope == "aws:123456789012"
+    stub.add_response("get_instances", {"instances": []})
+    ev = collector.run(only={"lightsail.instance.auto_snapshots"})[0]
+    assert ev.scope == "aws:123456789012" and ev.region == REGION
 
 
 def test_auto_snapshots_missing_fails(stubbed):

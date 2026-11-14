@@ -16,6 +16,7 @@
         "s3:ListAllMyBuckets",
         "s3:GetEncryptionConfiguration",
         "s3:GetBucketPublicAccessBlock",
+        "ec2:DescribeRegions",
         "ec2:GetEbsEncryptionByDefault",
         "securityhub:DescribeHub",
         "securityhub:GetFindings",

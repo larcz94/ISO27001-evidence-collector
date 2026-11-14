@@ -1,7 +1,8 @@
 """Amazon Lightsail collector: read-only checks for small AWS setups.
 
-Lightsail is regional, so each run checks one region. Credentials come
-from the standard boto3 chain. Use policies/lightsail-readonly-policy.json.
+Lightsail is regional, so one collector checks one region. The CLI creates
+one collector per region for multi-region runs. Credentials come from the
+standard boto3 chain. Use policies/lightsail-readonly-policy.json.
 """
 
 from __future__ import annotations
@@ -18,6 +19,23 @@ from .base import BaseCollector, check
 ADMIN_PORTS = {22: "SSH", 3389: "RDP"}
 OPEN_TO_WORLD = {"0.0.0.0/0", "::/0"}
 CERT_WARNING_DAYS = 30
+
+CHECK_INFO = {
+    "lightsail.instance.auto_snapshots": ("Instances should have automatic snapshots", "medium"),
+    "lightsail.disk.auto_snapshots":
+        ("Block storage disks should have automatic snapshots", "medium"),
+    "lightsail.instance.admin_ports_restricted":
+        ("SSH and RDP should not be open to the internet", "high"),
+    "lightsail.instance.imdsv2_required": ("Instances should require IMDSv2", "medium"),
+    "lightsail.instance.blueprint_supported":
+        ("Instances should run a supported OS image", "medium"),
+    "lightsail.bucket.public_access": ("Buckets should be private", "high"),
+    "lightsail.bucket.access_logging": ("Buckets should have access logging", "low"),
+    "lightsail.database.backup_and_exposure":
+        ("Databases should be backed up and not public", "high"),
+    "lightsail.loadbalancer.https_only": ("Load balancers should enforce HTTPS", "medium"),
+    "lightsail.certificate.expiry": ("Certificates should not be about to expire", "medium"),
+}
 
 REMEDIATION = {
     "lightsail.instance.auto_snapshots":
@@ -65,17 +83,28 @@ REMEDIATION = {
 class LightsailCollector(BaseCollector):
     source = "lightsail"
     remediation = REMEDIATION
+    check_info = CHECK_INFO
 
     def __init__(self, session: boto3.Session | None = None, region: str | None = None,
-                 client: Any = None) -> None:
+                 client: Any = None, scope: str | None = None) -> None:
         super().__init__()
         self.session = session or boto3.Session(region_name=region)
         self.region = region or self.session.region_name or "eu-central-1"
         # A client can be passed in so tests can attach a botocore Stubber.
         self.ls = client or self.session.client("lightsail", region_name=self.region)
-        self.scope = f"{self._account_id()}/{self.region}"
+        # In a multi-region run the account ID is looked up once and passed in.
+        self.scope = scope or self._account_id()
         self._instances: list[dict] | None = None
         self._buckets: list[dict] | None = None
+
+    @classmethod
+    def available_regions(cls, session: boto3.Session | None = None,
+                          client: Any = None) -> list[str]:
+        """Regions where Lightsail is offered."""
+        session = session or boto3.Session()
+        client = client or session.client(
+            "lightsail", region_name=session.region_name or "us-east-1")
+        return sorted(r["name"] for r in client.get_regions()["regions"])
 
     # ---------- helpers ----------
     def _account_id(self) -> str:
