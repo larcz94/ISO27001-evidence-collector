@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iso27001-evidence-collector"
-version = "0.2.0"
+version = "0.3.0"
 description = "Automated ISO/IEC 27001:2022 Annex A evidence collection across enterprise systems"
 readme = "README.md"
 license = { text = "MIT" }

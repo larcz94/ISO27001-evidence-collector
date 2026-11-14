@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ISO 27001 Evidence Report</title>
+<style>
+body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1f2933;
+       max-width: 60rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.25rem; margin-top: 2rem; }
+h3 { font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
+.meta { color: #52606d; margin: 0; padding: 0; list-style: none; }
+.notice { background: #f5f7fa; border-left: 4px solid #9aa5b1; padding: .6rem 1rem; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #e4e7eb;
+         vertical-align: top; }
+th { background: #f5f7fa; }
+.badge { display: inline-block; min-width: 3.2rem; text-align: center; padding: .1rem .45rem;
+         border-radius: .25rem; font-size: .8rem; font-weight: 600; border: 1px solid; }
+.PASS { color: #0b6b3a; background: #e6f6ec; } .FAIL { color: #a61b1b; background: #fdecec; }
+.ERROR { color: #8a5300; background: #fff4e0; } .INFO { color: #1d4f91; background: #e8f1fb; }
+.NA { color: #52606d; background: #f0f2f5; } .muted { color: #7b8794; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+.collected { color: #7b8794; font-size: .85rem; }
+@media print { body { margin: 0; max-width: none; } h3 { break-after: avoid; } }
+</style></head><body>
+<h1>ISO 27001 Evidence Report</h1>
+<ul class="meta">
+<li><strong>Framework:</strong> ISO/IEC 27001:2022</li>
+<li><strong>Generated:</strong> 2026-11-14 17:31 UTC</li>
+<li><strong>Scope:</strong> aws:123456789012, aws:123456789012/eu-central-1</li>
+<li><strong>Checks run:</strong> 18 (PASS 7, FAIL 10, ERROR 0, N/A 1)</li>
+</ul>
+<p class="notice"><strong>Example generated from fake data (moto and botocore Stubber), not a real account.</strong><br>Automated evidence supports, but does not replace, documented policies, procedures and records. See the notes under each control.</p>
+<h2>Summary by control</h2>
+<table><tr><th>Control</th><th>Title</th><th>Status</th><th>Checks</th></tr>
+<tr><td>A.5.15</td><td>Access control</td><td><span class="muted">not automated yet</span></td><td>0</td></tr>
+<tr><td>A.5.17</td><td>Authentication information</td><td><span class="badge FAIL">FAIL</span></td><td>2</td></tr>
+<tr><td>A.8.2</td><td>Privileged access rights</td><td><span class="badge FAIL">FAIL</span></td><td>1</td></tr>
+<tr><td>A.8.3</td><td>Information access restriction</td><td><span class="badge FAIL">FAIL</span></td><td>3</td></tr>
+<tr><td>A.8.5</td><td>Secure authentication</td><td><span class="badge FAIL">FAIL</span></td><td>2</td></tr>
+<tr><td>A.8.8</td><td>Management of technical vulnerabilities</td><td><span class="badge FAIL">FAIL</span></td><td>2</td></tr>
+<tr><td>A.8.9</td><td>Configuration management</td><td><span class="badge FAIL">FAIL</span></td><td>2</td></tr>
+<tr><td>A.8.13</td><td>Information backup</td><td><span class="badge FAIL">FAIL</span></td><td>3</td></tr>
+<tr><td>A.8.15</td><td>Logging</td><td><span class="badge FAIL">FAIL</span></td><td>2</td></tr>
+<tr><td>A.8.16</td><td>Monitoring activities</td><td><span class="badge FAIL">FAIL</span></td><td>1</td></tr>
+<tr><td>A.8.20</td><td>Networks security</td><td><span class="badge FAIL">FAIL</span></td><td>2</td></tr>
+<tr><td>A.8.24</td><td>Use of cryptography</td><td><span class="badge FAIL">FAIL</span></td><td>4</td></tr>
+<tr><td>A.8.25</td><td>Secure development life cycle</td><td><span class="muted">not automated yet</span></td><td>0</td></tr>
+<tr><td>A.8.32</td><td>Change management</td><td><span class="muted">not automated yet</span></td><td>0</td></tr>
+</table>
+<h2>Evidence detail</h2>
+<h3>A.5.17 Authentication information</h3>
+<table>
+<tr><td><span class="badge PASS">PASS</span></td><td><code>aws.iam.password_policy</code><br>Password policy: min length 14, reuse prevention 24<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>aws.iam.root_mfa</code><br>Root account MFA is NOT enabled<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+</table>
+<p><strong>Also provide:</strong> Password / authentication policy; process for issuing credentials.</p>
+<h3>A.8.2 Privileged access rights</h3>
+<table>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>aws.iam.root_mfa</code><br>Root account MFA is NOT enabled<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+</table>
+<p><strong>Also provide:</strong> List of privileged roles and approval records.</p>
+<h3>A.8.3 Information access restriction</h3>
+<table>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>aws.s3.bucket_protection</code><br>0 of 1 buckets encrypted with public access fully blocked<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>lightsail.bucket.public_access</code><br>1 of 2 buckets are private with no public object overrides<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+<tr><td><span class="badge PASS">PASS</span></td><td><code>lightsail.database.backup_and_exposure</code><br>1 of 1 databases have backups on and are not publicly accessible<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+</table>
+<h3>A.8.5 Secure authentication</h3>
+<table>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>aws.iam.root_mfa</code><br>Root account MFA is NOT enabled<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+<tr><td><span class="badge NA">N/A</span></td><td><code>aws.iam.console_users_mfa</code><br>No IAM users with console access<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+</table>
+<h3>A.8.8 Management of technical vulnerabilities</h3>
+<table>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>aws.securityhub.findings_summary</code><br>Security Hub is not enabled in eu-central-1<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012</span></td></tr>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>lightsail.instance.blueprint_supported</code><br>1 of 2 instances run a blueprint (OS image) that Lightsail has retired<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+</table>
+<p><strong>Also provide:</strong> Vulnerability management procedure and remediation tickets.</p>
+<h3>A.8.9 Configuration management</h3>
+<table>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>aws.config.recorder_and_compliance</code><br>AWS Config is not recording in eu-central-1<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>lightsail.instance.imdsv2_required</code><br>1 of 2 instances require IMDSv2<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+</table>
+<p><strong>Also provide:</strong> Approved baseline configurations (e.g. CIS benchmark choice).</p>
+<h3>A.8.13 Information backup</h3>
+<table>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>lightsail.instance.auto_snapshots</code><br>1 of 2 instances have automatic snapshots enabled<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+<tr><td><span class="badge PASS">PASS</span></td><td><code>lightsail.disk.auto_snapshots</code><br>1 of 1 block storage disks have automatic snapshots enabled<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+<tr><td><span class="badge PASS">PASS</span></td><td><code>lightsail.database.backup_and_exposure</code><br>1 of 1 databases have backups on and are not publicly accessible<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+</table>
+<p><strong>Also provide:</strong> Backup policy, retention period and records of restore tests.</p>
+<h3>A.8.15 Logging</h3>
+<table>
+<tr><td><span class="badge PASS">PASS</span></td><td><code>aws.cloudtrail.multi_region_logging</code><br>1 active multi-region CloudTrail trail(s)<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>lightsail.bucket.access_logging</code><br>1 of 2 buckets have access logging enabled<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+</table>
+<p><strong>Also provide:</strong> Logging policy, retention period, log review records.</p>
+<h3>A.8.16 Monitoring activities</h3>
+<table>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>aws.securityhub.findings_summary</code><br>Security Hub is not enabled in eu-central-1<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012</span></td></tr>
+</table>
+<h3>A.8.20 Networks security</h3>
+<table>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>lightsail.instance.admin_ports_restricted</code><br>1 admin port(s) open to the internet across 2 instance(s)<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+<tr><td><span class="badge PASS">PASS</span></td><td><code>lightsail.database.backup_and_exposure</code><br>1 of 1 databases have backups on and are not publicly accessible<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+</table>
+<p><strong>Also provide:</strong> Network diagram and firewall rule review records.</p>
+<h3>A.8.24 Use of cryptography</h3>
+<table>
+<tr><td><span class="badge FAIL">FAIL</span></td><td><code>aws.s3.bucket_protection</code><br>0 of 1 buckets encrypted with public access fully blocked<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+<tr><td><span class="badge PASS">PASS</span></td><td><code>aws.ec2.ebs_default_encryption</code><br>EBS encryption by default is enabled in eu-central-1<br><span class="collected">collected 2026-11-14T17:31:08+00:00, scope aws:123456789012</span></td></tr>
+<tr><td><span class="badge PASS">PASS</span></td><td><code>lightsail.loadbalancer.https_only</code><br>1 of 1 load balancers serve HTTPS and redirect HTTP to HTTPS<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+<tr><td><span class="badge PASS">PASS</span></td><td><code>lightsail.certificate.expiry</code><br>0 of 1 certificates expire within 30 days<br><span class="collected">collected 2026-11-14T17:31:09+00:00, scope aws:123456789012/eu-central-1</span></td></tr>
+</table>
+<p><strong>Also provide:</strong> Cryptography policy and key management procedure.</p>
+</body></html>

@@ -32,6 +32,7 @@ class LightsailCollector(BaseCollector):
         self.ls = client or self.session.client("lightsail", region_name=self.region)
         self.scope = f"{self._account_id()}/{self.region}"
         self._instances: list[dict] | None = None
+        self._buckets: list[dict] | None = None
 
     # ---------- helpers ----------
     def _account_id(self) -> str:
@@ -58,6 +59,11 @@ class LightsailCollector(BaseCollector):
         if self._instances is None:
             self._instances = self._all("get_instances", "instances")
         return self._instances
+
+    def buckets(self) -> list[dict]:
+        if self._buckets is None:
+            self._buckets = self._all("get_buckets", "buckets")
+        return self._buckets
 
     def _ev(self, check_id: str, status: Status, summary: str, **details) -> Evidence:
         return Evidence(check_id=check_id, source=self.source, status=status,
@@ -114,7 +120,7 @@ class LightsailCollector(BaseCollector):
     @check("lightsail.bucket.public_access")
     def bucket_public_access(self) -> Evidence:
         cid = "lightsail.bucket.public_access"
-        buckets = self._all("get_buckets", "buckets")
+        buckets = self.buckets()
         if not buckets:
             return self._ev(cid, Status.NOT_APPLICABLE, f"No Lightsail buckets in {self.region}")
         issues = []
@@ -200,4 +206,75 @@ class LightsailCollector(BaseCollector):
             f"{len(expiring)} of {len(certs)} certificates expire within "
             f"{CERT_WARNING_DAYS} days",
             certificates_total=len(certs), expiring_soon=expiring,
+        )
+
+    @check("lightsail.disk.auto_snapshots")
+    def disk_auto_snapshots(self) -> Evidence:
+        cid = "lightsail.disk.auto_snapshots"
+        # System disks are covered by the instance snapshot check.
+        disks = [d for d in self._all("get_disks", "disks") if not d.get("isSystemDisk")]
+        if not disks:
+            return self._ev(cid, Status.NOT_APPLICABLE,
+                            f"No Lightsail block storage disks in {self.region}")
+        missing = [
+            d["name"] for d in disks
+            if not any(a.get("name") == "AutoSnapshot" and a.get("status") == "Enabled"
+                       for a in d.get("addOns", []))
+        ]
+        return self._ev(
+            cid, Status.FAIL if missing else Status.PASS,
+            f"{len(disks) - len(missing)} of {len(disks)} block storage disks have "
+            f"automatic snapshots enabled",
+            disks_total=len(disks), disks_without_auto_snapshots=missing,
+        )
+
+    # ---------- logging ----------
+    @check("lightsail.bucket.access_logging")
+    def bucket_access_logging(self) -> Evidence:
+        cid = "lightsail.bucket.access_logging"
+        buckets = self.buckets()
+        if not buckets:
+            return self._ev(cid, Status.NOT_APPLICABLE, f"No Lightsail buckets in {self.region}")
+        missing = [b["name"] for b in buckets
+                   if not b.get("accessLogConfig", {}).get("enabled")]
+        return self._ev(
+            cid, Status.FAIL if missing else Status.PASS,
+            f"{len(buckets) - len(missing)} of {len(buckets)} buckets have access logging enabled",
+            buckets_total=len(buckets), buckets_without_access_logs=missing,
+        )
+
+    # ---------- configuration & vulnerability management ----------
+    @check("lightsail.instance.imdsv2_required")
+    def instance_imdsv2(self) -> Evidence:
+        cid = "lightsail.instance.imdsv2_required"
+        instances = self.instances()
+        if not instances:
+            return self._ev(cid, Status.NOT_APPLICABLE, f"No Lightsail instances in {self.region}")
+        # IMDSv2 needs a session token, which blocks most SSRF attacks that
+        # try to steal instance credentials from the metadata service.
+        weak = [i["name"] for i in instances
+                if i.get("metadataOptions", {}).get("httpTokens") != "required"]
+        return self._ev(
+            cid, Status.FAIL if weak else Status.PASS,
+            f"{len(instances) - len(weak)} of {len(instances)} instances require IMDSv2",
+            instances_total=len(instances), instances_allowing_imdsv1=weak,
+        )
+
+    @check("lightsail.instance.blueprint_supported")
+    def instance_blueprint_supported(self) -> Evidence:
+        cid = "lightsail.instance.blueprint_supported"
+        instances = self.instances()
+        if not instances:
+            return self._ev(cid, Status.NOT_APPLICABLE, f"No Lightsail instances in {self.region}")
+        blueprints = self._all("get_blueprints", "blueprints", includeInactive=True)
+        active = {b["blueprintId"]: b.get("isActive", False) for b in blueprints}
+        retired = [{"instance": i["name"], "blueprint": i.get("blueprintId")}
+                   for i in instances if active.get(i.get("blueprintId")) is False]
+        unknown = [i["name"] for i in instances if i.get("blueprintId") not in active]
+        return self._ev(
+            cid, Status.FAIL if retired else Status.PASS,
+            f"{len(retired)} of {len(instances)} instances run a blueprint (OS image) "
+            f"that Lightsail has retired",
+            instances_total=len(instances), retired_blueprints=retired,
+            unknown_blueprints=unknown,
         )

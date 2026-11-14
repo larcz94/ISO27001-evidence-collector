@@ -39,9 +39,10 @@ def stubbed():
         stubber.assert_no_pending_responses()
 
 
-def instance(name, auto_snapshot=False):
+def instance(name, auto_snapshot=False, imdsv2=False, blueprint="ubuntu_24_04"):
     addons = [{"name": "AutoSnapshot", "status": "Enabled"}] if auto_snapshot else []
-    return {"name": name, "addOns": addons}
+    return {"name": name, "addOns": addons, "blueprintId": blueprint,
+            "metadataOptions": {"httpTokens": "required" if imdsv2 else "optional"}}
 
 
 def port(from_port, to_port, cidrs, state="open"):
@@ -169,16 +170,76 @@ def test_full_run_with_api_error_reports_error_not_crash(stubbed):
     collector, stub = stubbed
     # Calls run in check-ID order. Instances are fetched once and reused.
     stub.add_client_error("get_buckets", service_error_code="AccessDeniedException")
+    stub.add_response("get_buckets", {"buckets": []})
     stub.add_response("get_certificates", {"certificates": []})
     stub.add_response("get_relational_databases", {"relationalDatabases": []})
-    stub.add_response("get_instances", {"instances": [instance("web-1", True)]})
+    stub.add_response("get_disks", {"disks": []})
+    stub.add_response("get_instances", {"instances": [instance("web-1", True, imdsv2=True)]})
     stub.add_response("get_instance_port_states", {"portStates": []})
+    stub.add_response("get_blueprints", {"blueprints": [
+        {"blueprintId": "ubuntu_24_04", "isActive": True}]})
     stub.add_response("get_load_balancers", {"loadBalancers": []})
     results = {e.check_id: e for e in collector.run()}
-    assert results["lightsail.bucket.public_access"].status == Status.ERROR
+    assert len(results) == 10
+    assert results["lightsail.bucket.access_logging"].status == Status.ERROR
+    assert results["lightsail.bucket.public_access"].status == Status.NOT_APPLICABLE
+    assert results["lightsail.instance.imdsv2_required"].status == Status.PASS
+    assert results["lightsail.instance.blueprint_supported"].status == Status.PASS
     assert results["lightsail.instance.auto_snapshots"].status == Status.PASS
     md = build_markdown(list(results.values()), load_mapping())
     assert "A.8.13" in md and "Information backup" in md
+
+
+def test_data_disk_without_auto_snapshots_fails(stubbed):
+    collector, stub = stubbed
+    stub.add_response("get_disks", {"disks": [
+        {"name": "data-1", "isSystemDisk": False,
+         "addOns": [{"name": "AutoSnapshot", "status": "Enabled"}]},
+        {"name": "data-2", "isSystemDisk": False, "addOns": []},
+        {"name": "root", "isSystemDisk": True, "addOns": []},
+    ]})
+    ev = collector.disk_auto_snapshots()
+    assert ev.status == Status.FAIL
+    assert ev.details["disks_without_auto_snapshots"] == ["data-2"]
+    assert ev.details["disks_total"] == 2
+
+
+def test_bucket_without_access_logging_fails(stubbed):
+    collector, stub = stubbed
+    stub.add_response("get_buckets", {"buckets": [
+        {"name": "logged", "accessLogConfig": {"enabled": True, "destination": "logs"}},
+        {"name": "silent", "accessLogConfig": {"enabled": False}},
+        {"name": "no-config"},
+    ]})
+    ev = collector.bucket_access_logging()
+    assert ev.status == Status.FAIL
+    assert ev.details["buckets_without_access_logs"] == ["silent", "no-config"]
+
+
+def test_instance_allowing_imdsv1_fails(stubbed):
+    collector, stub = stubbed
+    stub.add_response("get_instances", {"instances": [
+        instance("new", imdsv2=True), instance("old", imdsv2=False)]})
+    ev = collector.instance_imdsv2()
+    assert ev.status == Status.FAIL
+    assert ev.details["instances_allowing_imdsv1"] == ["old"]
+
+
+def test_retired_blueprint_fails(stubbed):
+    collector, stub = stubbed
+    stub.add_response("get_instances", {"instances": [
+        instance("current", blueprint="ubuntu_24_04"),
+        instance("legacy", blueprint="ubuntu_16_04"),
+        instance("custom", blueprint="something_else")]})
+    stub.add_response("get_blueprints", {"blueprints": [
+        {"blueprintId": "ubuntu_24_04", "isActive": True},
+        {"blueprintId": "ubuntu_16_04", "isActive": False}]},
+        expected_params={"includeInactive": True})
+    ev = collector.instance_blueprint_supported()
+    assert ev.status == Status.FAIL
+    assert ev.details["retired_blueprints"] == [
+        {"instance": "legacy", "blueprint": "ubuntu_16_04"}]
+    assert ev.details["unknown_blueprints"] == ["custom"]
 
 
 def test_report_separates_not_run_from_not_automated():

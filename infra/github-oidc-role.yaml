@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Read-only IAM role for iso27001-evidence-collector, assumed by GitHub
+  Actions through OIDC. No access keys are created or stored.
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Description: GitHub user or organization that owns the repository.
+    AllowedPattern: "^[A-Za-z0-9][A-Za-z0-9-]*$"
+  GitHubRepo:
+    Type: String
+    Description: Repository name that runs the workflow.
+    Default: ISO27001-evidence-collector
+    AllowedPattern: "^[A-Za-z0-9._-]+$"
+  GitHubBranch:
+    Type: String
+    Description: Only workflows on this branch may assume the role.
+    Default: main
+  CreateOIDCProvider:
+    Type: String
+    Description: >-
+      An AWS account can hold only one GitHub OIDC provider. Choose "false"
+      if token.actions.githubusercontent.com already exists in IAM.
+    AllowedValues: ["true", "false"]
+    Default: "true"
+  EnableAwsChecks:
+    Type: String
+    Description: Allow the checks of the "aws" source (IAM, CloudTrail, S3, EC2, Security Hub, Config).
+    AllowedValues: ["true", "false"]
+    Default: "false"
+  EnableLightsailChecks:
+    Type: String
+    Description: Allow the checks of the "lightsail" source.
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+Conditions:
+  CreateProvider:
+    Fn::Equals: [Ref: CreateOIDCProvider, "true"]
+  AwsChecks:
+    Fn::Equals: [Ref: EnableAwsChecks, "true"]
+  LightsailChecks:
+    Fn::Equals: [Ref: EnableLightsailChecks, "true"]
+
+Resources:
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+
+  EvidenceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Read-only evidence collection from GitHub Actions (OIDC).
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRoleWithWebIdentity
+            Principal:
+              Federated:
+                Fn::If:
+                  - CreateProvider
+                  - Ref: GitHubOIDCProvider
+                  - Fn::Sub: "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Condition:
+              StringEquals:
+                "token.actions.githubusercontent.com:aud": sts.amazonaws.com
+                # Exact match on purpose: only this repository and branch.
+                "token.actions.githubusercontent.com:sub":
+                  Fn::Sub: "repo:${GitHubOwner}/${GitHubRepo}:ref:refs/heads/${GitHubBranch}"
+      Policies:
+        - PolicyName: identity
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sts:GetCallerIdentity
+                Resource: "*"
+
+  AwsReadOnlyPolicy:
+    Type: AWS::IAM::RolePolicy
+    Condition: AwsChecks
+    Properties:
+      RoleName:
+        Ref: EvidenceRole
+      PolicyName: iso27001-aws-readonly
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ISO27001EvidenceReadOnly
+            Effect: Allow
+            Action:
+              - iam:GetAccountSummary
+              - iam:GetAccountPasswordPolicy
+              - iam:ListUsers
+              - iam:GetLoginProfile
+              - iam:ListMFADevices
+              - cloudtrail:DescribeTrails
+              - cloudtrail:GetTrailStatus
+              - s3:ListAllMyBuckets
+              - s3:GetEncryptionConfiguration
+              - s3:GetBucketPublicAccessBlock
+              - ec2:GetEbsEncryptionByDefault
+              - securityhub:DescribeHub
+              - securityhub:GetFindings
+              - config:DescribeConfigurationRecorderStatus
+              - config:DescribeComplianceByConfigRule
+            Resource: "*"
+
+  LightsailReadOnlyPolicy:
+    Type: AWS::IAM::RolePolicy
+    Condition: LightsailChecks
+    Properties:
+      RoleName:
+        Ref: EvidenceRole
+      PolicyName: iso27001-lightsail-readonly
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ISO27001LightsailEvidenceReadOnly
+            Effect: Allow
+            Action:
+              - lightsail:GetInstances
+              - lightsail:GetInstancePortStates
+              - lightsail:GetBuckets
+              - lightsail:GetDisks
+              - lightsail:GetBlueprints
+              - lightsail:GetRelationalDatabases
+              - lightsail:GetLoadBalancers
+              - lightsail:GetCertificates
+            Resource: "*"
+
+Outputs:
+  RoleArn:
+    Description: Set this as the repository variable AWS_EVIDENCE_ROLE_ARN.
+    Value:
+      Fn::GetAtt: [EvidenceRole, Arn]

@@ -9,6 +9,8 @@
         "lightsail:GetInstances",
         "lightsail:GetInstancePortStates",
         "lightsail:GetBuckets",
+        "lightsail:GetDisks",
+        "lightsail:GetBlueprints",
         "lightsail:GetRelationalDatabases",
         "lightsail:GetLoadBalancers",
         "lightsail:GetCertificates"

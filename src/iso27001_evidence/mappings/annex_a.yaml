@@ -44,18 +44,21 @@ controls:
     title: Management of technical vulnerabilities
     checks:
       - aws.securityhub.findings_summary   # planned: linux.patch_level
+      - lightsail.instance.blueprint_supported
     note: Vulnerability management procedure and remediation tickets.
 
   A.8.9:
     title: Configuration management
     checks:
       - aws.config.recorder_and_compliance
+      - lightsail.instance.imdsv2_required
     note: Approved baseline configurations (e.g. CIS benchmark choice).
 
   A.8.13:
     title: Information backup
     checks:
       - lightsail.instance.auto_snapshots
+      - lightsail.disk.auto_snapshots
       - lightsail.database.backup_and_exposure
     note: Backup policy, retention period and records of restore tests.
 
@@ -63,6 +66,7 @@ controls:
     title: Logging
     checks:
       - aws.cloudtrail.multi_region_logging   # planned: linux.log_forwarding
+      - lightsail.bucket.access_logging
     note: Logging policy, retention period, log review records.
 
   A.8.16:
