@@ -21,6 +21,8 @@ class BaseCollector:
     """
 
     source: str = "base"
+    # check_id -> how to fix a FAIL. Shown in the report next to the finding.
+    remediation: dict[str, str] = {}
 
     def __init__(self) -> None:
         self.scope = ""
@@ -50,6 +52,8 @@ class BaseCollector:
                     summary=f"Check failed: {type(exc).__name__}: {exc}",
                 )
             ev.scope = ev.scope or self.scope
+            if ev.status == Status.FAIL and not ev.remediation:
+                ev.remediation = self.remediation.get(check_id, "")
             results.append(ev)
         return results
 

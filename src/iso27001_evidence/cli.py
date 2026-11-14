@@ -54,6 +54,10 @@ def main(argv: list[str] | None = None) -> int:
     paths = write_reports(evidence, load_mapping(args.mapping), args.out)
     for e in evidence:
         print(f"{e.status.value:<5} {e.check_id:<42} {e.summary}")
+    failed = sum(e.status == Status.FAIL for e in evidence)
+    if failed:
+        print(f"\n{failed} finding(s) to fix. The report lists the affected resources "
+              f"and how to fix each one.")
     print(f"\nMarkdown: {paths['markdown']}\nHTML:     {paths['html']}"
           f"\nJSON:     {paths['json']}")
 

@@ -23,6 +23,7 @@ class Evidence:
     status: Status
     summary: str                      # one human-readable line for the auditor
     details: dict[str, Any] = field(default_factory=dict)
+    remediation: str = ""             # how to fix it, set when a check fails
     scope: str = ""                   # e.g. AWS account ID / tenant ID
     collected_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")

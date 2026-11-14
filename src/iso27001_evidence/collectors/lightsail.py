@@ -19,9 +19,52 @@ ADMIN_PORTS = {22: "SSH", 3389: "RDP"}
 OPEN_TO_WORLD = {"0.0.0.0/0", "::/0"}
 CERT_WARNING_DAYS = 30
 
+REMEDIATION = {
+    "lightsail.instance.auto_snapshots":
+        "In the Lightsail console open the instance, go to the Snapshots tab and turn on "
+        "automatic snapshots. Snapshot storage is billed per GB. If the instance holds no "
+        "data you need, record that as an accepted risk instead.",
+    "lightsail.disk.auto_snapshots":
+        "In the Lightsail console open the disk under Storage, go to the Snapshots tab and "
+        "turn on automatic snapshots. Each block storage disk has its own snapshot setting.",
+    "lightsail.instance.admin_ports_restricted":
+        "In the Lightsail console open the instance, go to the Networking tab and edit the "
+        "SSH (22) or RDP (3389) rule in the IPv4 firewall: restrict it to your own IP "
+        "addresses, or allow only Lightsail browser SSH/RDP. Do the same in the IPv6 "
+        "firewall, or turn IPv6 off if you do not use it.",
+    "lightsail.instance.imdsv2_required":
+        "Require IMDSv2 with the AWS CLI: aws lightsail update-instance-metadata-options "
+        "--instance-name <name> --http-tokens required. Test the application afterwards, "
+        "because very old SDKs may still use IMDSv1.",
+    "lightsail.instance.blueprint_supported":
+        "The OS image is retired, which usually means the OS version is near or past end "
+        "of life. Take a snapshot, create a new instance from a current blueprint, move "
+        "the application and delete the old instance.",
+    "lightsail.bucket.public_access":
+        "In the Lightsail console open the bucket, go to the Permissions tab, set the "
+        "bucket to private and turn off the option that lets individual objects be made "
+        "public. If the bucket hosts a public website on purpose, record it as an accepted "
+        "risk.",
+    "lightsail.bucket.access_logging":
+        "In the Lightsail console open the bucket, go to the Logging tab, turn on access "
+        "logging and choose a second, private bucket as the destination.",
+    "lightsail.database.backup_and_exposure":
+        "In the Lightsail console open the database. On the Networking tab turn off public "
+        "mode, so only your Lightsail resources can reach it. Make sure automatic backups "
+        "are turned on.",
+    "lightsail.loadbalancer.https_only":
+        "In the Lightsail console open the load balancer, attach a TLS certificate and "
+        "turn on the HTTP to HTTPS redirect.",
+    "lightsail.certificate.expiry":
+        "Lightsail renews a certificate only while it is in use and its DNS validation "
+        "records still exist. Check that the validation CNAME records are still in your "
+        "DNS zone, or create a new certificate and attach it before the old one expires.",
+}
+
 
 class LightsailCollector(BaseCollector):
     source = "lightsail"
+    remediation = REMEDIATION
 
     def __init__(self, session: boto3.Session | None = None, region: str | None = None,
                  client: Any = None) -> None:
@@ -204,7 +247,9 @@ class LightsailCollector(BaseCollector):
         return self._ev(
             cid, Status.FAIL if expiring else Status.PASS,
             f"{len(expiring)} of {len(certs)} certificates expire within "
-            f"{CERT_WARNING_DAYS} days",
+            f"{CERT_WARNING_DAYS} days" if expiring
+            else f"None of the {len(certs)} issued certificates expire within "
+                 f"{CERT_WARNING_DAYS} days",
             certificates_total=len(certs), expiring_soon=expiring,
         )
 
@@ -273,8 +318,10 @@ class LightsailCollector(BaseCollector):
         unknown = [i["name"] for i in instances if i.get("blueprintId") not in active]
         return self._ev(
             cid, Status.FAIL if retired else Status.PASS,
-            f"{len(retired)} of {len(instances)} instances run a blueprint (OS image) "
-            f"that Lightsail has retired",
+            f"{len(retired)} of {len(instances)} instances run a retired blueprint "
+            f"(OS image)" if retired
+            else f"All {len(instances)} instances run a blueprint (OS image) that "
+                 f"Lightsail still offers",
             instances_total=len(instances), retired_blueprints=retired,
             unknown_blueprints=unknown,
         )

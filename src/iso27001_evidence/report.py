@@ -34,6 +34,78 @@ def control_status(results: list[Evidence]) -> Status | None:
     return Status.NOT_APPLICABLE
 
 
+FIX_NOTE = ("Fix suggestions are general guidance. Review them against your own "
+            "policies and test before you change a production system.")
+ERROR_NOTE = ("These checks could not run, so they prove nothing either way. The usual "
+              "cause is a missing permission. Compare the role with the files in policies/.")
+
+
+def controls_by_check(mapping: dict) -> dict[str, list[str]]:
+    """Reverse the mapping: check ID -> the Annex A controls it supports."""
+    out: dict[str, list[str]] = {}
+    for cid, ctl in mapping.get("controls", {}).items():
+        for check_id in ctl.get("checks", []):
+            out.setdefault(check_id, []).append(cid)
+    return out
+
+
+def _label(key: str) -> str:
+    return key.replace("_", " ")
+
+
+def _value(value: object) -> str:
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value)
+    return str(value)
+
+
+def affected_resources(details: dict) -> list[tuple[str, list[str]]]:
+    """Turn the non-empty lists in a check's details into readable lines.
+
+    {"exposed_admin_ports": [{"instance": "web-1", "port": 22}]}
+    becomes [("exposed admin ports", ["instance: web-1; port: 22"])].
+    """
+    groups = []
+    for key, value in details.items():
+        if not isinstance(value, list) or not value:
+            continue
+        items = []
+        for item in value:
+            if isinstance(item, dict):
+                items.append("; ".join(f"{_label(k)}: {_value(v)}" for k, v in item.items()))
+            else:
+                items.append(str(item))
+        groups.append((_label(key), items))
+    return groups
+
+
+def _markdown_findings(evidence: list[Evidence], mapping: dict) -> list[str]:
+    by_control = controls_by_check(mapping)
+    failed = sorted((e for e in evidence if e.status == Status.FAIL), key=lambda e: e.check_id)
+    errors = sorted((e for e in evidence if e.status == Status.ERROR), key=lambda e: e.check_id)
+
+    lines = ["", f"## Findings to fix ({len(failed)})", ""]
+    if not failed:
+        lines += ["No failed checks in this run.", ""]
+    else:
+        lines += [f"> {FIX_NOTE}", ""]
+    for n, e in enumerate(failed, 1):
+        lines += [f"### {n}. {e.check_id}", "", f"- **Finding:** {e.summary}"]
+        if by_control.get(e.check_id):
+            lines.append(f"- **Controls:** {', '.join(by_control[e.check_id])}")
+        for label, items in affected_resources(e.details):
+            lines.append(f"- **Affected ({label}):**")
+            lines += [f"  - {item}" for item in items]
+        if e.remediation:
+            lines.append(f"- **How to fix:** {e.remediation}")
+        lines.append("")
+    if errors:
+        lines += [f"## Checks that could not run ({len(errors)})", "", f"> {ERROR_NOTE}", ""]
+        lines += [f"- `{e.check_id}`: {e.summary}" for e in errors]
+        lines.append("")
+    return lines
+
+
 def build_markdown(evidence: list[Evidence], mapping: dict) -> str:
     by_check = {e.check_id: e for e in evidence}
     scopes = sorted({e.scope for e in evidence if e.scope})
@@ -70,7 +142,8 @@ def build_markdown(evidence: list[Evidence], mapping: dict) -> str:
             label = "not automated yet"
         lines.append(f"| {cid} | {ctl['title']} | {label} | {len(results)} |")
 
-    lines += ["", "## Evidence detail", ""]
+    lines += _markdown_findings(evidence, mapping)
+    lines += ["## Evidence detail", ""]
     for cid, ctl in controls.items():
         results = [by_check[c] for c in ctl.get("checks", []) if c in by_check]
         if not results:
@@ -103,6 +176,11 @@ th { background: #f5f7fa; }
 .NA { color: #52606d; background: #f0f2f5; } .muted { color: #7b8794; }
 code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
 .collected { color: #7b8794; font-size: .85rem; }
+.finding { border: 1px solid #e4e7eb; border-left: 4px solid #a61b1b; border-radius: .25rem;
+           padding: .2rem 1rem .6rem; margin: 1rem 0; break-inside: avoid; }
+.finding h3 { margin-top: .8rem; } .finding ul { margin: .2rem 0 .6rem; }
+.finding dt { font-weight: 600; margin-top: .5rem; } .finding dd { margin-left: 0; }
+.fix { background: #f0f7f2; border-radius: .25rem; padding: .5rem .8rem; }
 @media print { body { margin: 0; max-width: none; } h3 { break-after: avoid; } }
 """
 
@@ -110,6 +188,36 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
 def _badge(status: Status) -> str:
     css = "NA" if status == Status.NOT_APPLICABLE else status.name
     return f'<span class="badge {css}">{escape(status.value)}</span>'
+
+
+def _html_findings(evidence: list[Evidence], mapping: dict) -> list[str]:
+    by_control = controls_by_check(mapping)
+    failed = sorted((e for e in evidence if e.status == Status.FAIL), key=lambda e: e.check_id)
+    errors = sorted((e for e in evidence if e.status == Status.ERROR), key=lambda e: e.check_id)
+
+    out = [f"<h2>Findings to fix ({len(failed)})</h2>"]
+    if not failed:
+        out.append("<p>No failed checks in this run.</p>")
+    else:
+        out.append(f'<p class="notice">{escape(FIX_NOTE)}</p>')
+    for n, e in enumerate(failed, 1):
+        out.append(f'<div class="finding"><h3>{n}. <code>{escape(e.check_id)}</code></h3><dl>')
+        out.append(f"<dt>Finding</dt><dd>{escape(e.summary)}</dd>")
+        if by_control.get(e.check_id):
+            out.append(f"<dt>Controls</dt><dd>{escape(', '.join(by_control[e.check_id]))}</dd>")
+        for label, items in affected_resources(e.details):
+            rows = "".join(f"<li>{escape(item)}</li>" for item in items)
+            out.append(f"<dt>Affected ({escape(label)})</dt><dd><ul>{rows}</ul></dd>")
+        if e.remediation:
+            out.append(f'<dt>How to fix</dt><dd class="fix">{escape(e.remediation)}</dd>')
+        out.append("</dl></div>")
+    if errors:
+        out.append(f"<h2>Checks that could not run ({len(errors)})</h2>")
+        out.append(f'<p class="notice">{escape(ERROR_NOTE)}</p><ul>')
+        out += [f"<li><code>{escape(e.check_id)}</code>: {escape(e.summary)}</li>"
+                for e in errors]
+        out.append("</ul>")
+    return out
 
 
 def build_html(evidence: list[Evidence], mapping: dict) -> str:
@@ -171,6 +279,7 @@ def build_html(evidence: list[Evidence], mapping: dict) -> str:
         "<table><tr><th>Control</th><th>Title</th><th>Status</th><th>Checks</th></tr>",
         *summary_rows,
         "</table>",
+        *_html_findings(evidence, mapping),
         "<h2>Evidence detail</h2>",
         *detail,
         "</body></html>",

@@ -33,6 +33,29 @@ The output above comes from fake data. Full sample reports:
 [AWS](examples/sample-report.md), [Lightsail](examples/sample-report-lightsail.md)
 and a combined [HTML report](examples/sample-report-all.html) (download and open it in a browser).
 
+## Findings and fixes
+
+A FAIL is only useful if you know what failed and what to do about it. For
+every failed check the report names the affected resources, the Annex A
+controls and a fix suggestion:
+
+```markdown
+### 1. lightsail.instance.admin_ports_restricted
+
+- **Finding:** 1 admin port(s) open to the internet across 2 instance(s)
+- **Controls:** A.8.20
+- **Affected (exposed admin ports):**
+  - instance: worker-1; port: 22; service: SSH; open to: 0.0.0.0/0
+- **How to fix:** In the Lightsail console open the instance, go to the
+  Networking tab and edit the SSH (22) or RDP (3389) rule in the IPv4 firewall:
+  restrict it to your own IP addresses, or allow only Lightsail browser SSH/RDP.
+  Do the same in the IPv6 firewall, or turn IPv6 off if you do not use it.
+```
+
+Fix suggestions are general guidance. Review them against your own policies
+before you change a production system. The same data is in the JSON file
+(`details` and `remediation` fields) if you want to create tickets from it.
+
 ## How it works
 
 ```mermaid
@@ -56,7 +79,8 @@ flowchart LR
 2. **Control mapping** in [`annex_a.yaml`](src/iso27001_evidence/mappings/annex_a.yaml)
    links each check to one or more Annex A controls.
 3. **Reports** group the results by control, with a timestamp and the account
-   they came from.
+   they came from. Every failed check is listed under "Findings to fix" with
+   the affected resources and a fix suggestion.
 4. **Scheduling** with a [GitHub Actions workflow](.github/workflows/collect-evidence.yml)
    and OIDC, so no AWS keys are stored.
 
@@ -172,6 +196,7 @@ pytest -q
 - [x] AWS collector (8 checks)
 - [x] Amazon Lightsail collector (10 checks)
 - [x] Markdown, HTML and JSON reports
+- [x] Findings with affected resources and fix suggestions
 - [x] GitHub Actions scheduled run with OIDC and a CloudFormation role template
 - [ ] Checks across all regions in one run
 - [ ] Publish to PyPI

@@ -14,9 +14,39 @@ from botocore.exceptions import ClientError
 from ..models import Evidence, Status
 from .base import BaseCollector, check
 
+REMEDIATION = {
+    "aws.iam.root_mfa":
+        "Sign in as the root user, open Security credentials and assign an MFA device. "
+        "Do not use the root user for daily work.",
+    "aws.iam.console_users_mfa":
+        "For each listed user: IAM > Users > Security credentials > assign an MFA device. "
+        "Better, move people to IAM Identity Center and remove IAM console passwords.",
+    "aws.iam.password_policy":
+        "IAM > Account settings > edit the password policy: minimum length 14 or more and "
+        "prevent password reuse.",
+    "aws.cloudtrail.multi_region_logging":
+        "CloudTrail > Trails > create a trail that applies to all regions, and make sure "
+        "logging is turned on. Turn on log file validation as well.",
+    "aws.s3.bucket_protection":
+        "For each listed bucket turn on Block Public Access (all four settings) and "
+        "default encryption. Block Public Access can also be set once for the whole "
+        "account under S3 > Block Public Access settings for this account.",
+    "aws.ec2.ebs_default_encryption":
+        "EC2 console > Settings > EBS encryption > turn on encryption by default. This is "
+        "a per-region setting, so repeat it in every region you use.",
+    "aws.securityhub.findings_summary":
+        "If Security Hub is not enabled, enable it in this region. Otherwise review the "
+        "open critical and high findings and fix them or record a decision for each.",
+    "aws.config.recorder_and_compliance":
+        "If AWS Config is not recording, turn on the configuration recorder in this "
+        "region. Otherwise open each listed non-compliant rule and fix the resources it "
+        "reports.",
+}
+
 
 class AWSCollector(BaseCollector):
     source = "aws"
+    remediation = REMEDIATION
 
     def __init__(self, session: boto3.Session | None = None, region: str | None = None) -> None:
         super().__init__()
