@@ -1,0 +1,31 @@
+# Accepted risk register for iso27001-evidence-collector.
+#
+# Use it with:  iso27001-evidence collect --accepted-risks examples/accepted-risks.yaml
+#
+# Each entry accepts one failed check on purpose. The finding keeps its FAIL
+# status, because the gap is real, but the report moves it to "Accepted risks"
+# with the reason, approver and expiry date, and --fail-on-gap ignores it.
+#
+# Required fields: check, reason, approved_by, expires (last valid day).
+# Optional fields: region (default: any region), resources (default: all),
+#                  ticket (a link or ID in your risk register or ticket system).
+#
+# Name the resources when you can. If a new resource fails the same check and
+# is not listed, the finding shows up again, so an old exception cannot hide it.
+
+accepted_risks:
+  - check: lightsail.instance.auto_snapshots
+    region: eu-central-1
+    resources: [worker-1]
+    reason: Stateless worker. It is rebuilt from code, so a snapshot adds no value.
+    approved_by: Jane Doe (ISMS lead)
+    expires: 2027-05-31
+    ticket: RISK-12
+
+  - check: lightsail.bucket.public_access
+    region: eu-central-1
+    resources: [static-site]
+    reason: Hosts the public marketing website. It contains no internal data.
+    approved_by: Jane Doe (ISMS lead)
+    expires: 2027-11-30
+    ticket: RISK-15

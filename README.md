@@ -74,6 +74,44 @@ risk assessment of your environment. The same data is in the JSON file
 (`title`, `severity`, `region`, `details` and `remediation` fields) if you
 want to create tickets from it.
 
+## Accepted risks
+
+ISO 27001 does not ask for zero findings. It asks that every risk is either
+fixed or accepted on purpose, with a reason and an owner (clause 6.1.3, risk
+treatment). Write those decisions in a small YAML file and pass it to the tool:
+
+```yaml
+accepted_risks:
+  - check: lightsail.instance.auto_snapshots
+    region: eu-central-1          # optional, default: any region
+    resources: [worker-1]         # optional, default: every resource
+    reason: Stateless worker. It is rebuilt from code, so a snapshot adds no value.
+    approved_by: Jane Doe (ISMS lead)
+    expires: 2027-05-31           # last day the acceptance is valid
+    ticket: RISK-12               # optional
+```
+
+```bash
+iso27001-evidence collect --source lightsail --all-regions --accepted-risks accepted-risks.yaml
+```
+
+- **The status stays FAIL.** The gap is real, so the evidence says so. The
+  finding moves from "Findings to fix" to an "Accepted risks" section that
+  shows the reason, the approver and the expiry date.
+- **New resources are not hidden.** When `resources` is set and another
+  resource fails the same check, the finding stays open and the report names
+  the resource the acceptance does not cover.
+- **Acceptances expire.** After the `expires` date the finding is open again,
+  with a note, so every exception gets reviewed.
+- **`--fail-on-gap` ignores accepted risks**, so a CI run fails only on gaps
+  nobody has decided about.
+- **Mistakes stop the run.** An unknown check ID, a missing field or a bad
+  date is reported before any AWS call. An entry that matches no failed check
+  is reported too, so fixed gaps can be removed from the file.
+
+A full example is in [`examples/accepted-risks.yaml`](examples/accepted-risks.yaml).
+In the JSON output each accepted result carries an `accepted_risk` field.
+
 ## How it works
 
 ```mermaid
@@ -242,6 +280,7 @@ pytest -q
 - [x] Findings with affected resources and fix suggestions
 - [x] GitHub Actions scheduled run with OIDC and a CloudFormation role template
 - [x] Several regions or all regions in one run and one report
+- [x] Accepted risk register with expiry dates
 - [ ] Publish to PyPI
 - [ ] GitLab / GitHub collector (branch protection, reviews)
 - [ ] Microsoft 365 / Entra ID collector
@@ -296,7 +335,7 @@ evidence report per control.
 Install a specific release:
 
 ```bash
-pip install "git+https://github.com/larcz94/ISO27001-evidence-collector@v1.0.0"
+pip install "git+https://github.com/larcz94/ISO27001-evidence-collector@v1.1.0"
 ```
 
 ## Security

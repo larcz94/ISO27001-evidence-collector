@@ -4,6 +4,7 @@
     iso27001-evidence collect --source lightsail --region eu-west-3 eu-central-1
     iso27001-evidence collect --source lightsail --all-regions
     iso27001-evidence collect --source all --region eu-central-1
+    iso27001-evidence collect --source lightsail --accepted-risks accepted-risks.yaml
     iso27001-evidence list-checks --source aws
 """
 
@@ -14,6 +15,15 @@ import logging
 import sys
 
 from . import __version__
+from .accepted_risks import (
+    EXPIRED,
+    PARTIAL,
+    AcceptedRisk,
+    AcceptedRiskError,
+    apply_accepted_risks,
+    is_accepted,
+    load_accepted_risks,
+)
 from .collectors import AVAILABLE, collector_class, get_collector
 from .models import Evidence, Status
 from .report import load_mapping, write_reports
@@ -92,6 +102,33 @@ def _print_results(evidence: list[Evidence]) -> None:
               f"The report lists them per region.")
 
 
+def _load_risks(path: str | None) -> list[AcceptedRisk]:
+    """Load the register before any AWS call, so a typo fails in seconds."""
+    if not path:
+        return []
+    known = [cid for source in AVAILABLE for cid in collector_class(source).check_ids()]
+    try:
+        return load_accepted_risks(path, known)
+    except AcceptedRiskError as exc:
+        raise SystemExit(f"Accepted risk register: {exc}") from exc
+
+
+def _print_risk_notes(evidence: list[Evidence], risks: list[AcceptedRisk]) -> None:
+    for e in evidence:
+        state = e.accepted_risk.get("state")
+        where = f" ({e.region})" if e.region and e.region != "global" else ""
+        if state == EXPIRED:
+            print(f"Note: the acceptance for {e.check_id}{where} expired on "
+                  f"{e.accepted_risk['expires']}. It is a finding again.")
+        elif state == PARTIAL:
+            print(f"Note: the acceptance for {e.check_id}{where} does not name "
+                  f"{', '.join(e.accepted_risk['not_covered'])}. It stays a finding.")
+    for risk in risks:
+        if not risk.used:
+            print(f"Note: the acceptance for {risk.label()} matched no failed check. "
+                  f"If the gap is fixed, remove it from the register.")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="iso27001-evidence",
                                      description="ISO 27001 Annex A evidence collector")
@@ -105,7 +142,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--mapping", help="Custom mapping YAML (default: built-in Annex A mapping)")
     c.add_argument("--out", default="reports")
     c.add_argument("--fail-on-gap", action="store_true",
-                   help="Exit with code 1 if any check FAILs (useful in CI)")
+                   help="Exit with code 1 if any check FAILs and is not an accepted risk "
+                        "(useful in CI)")
+    c.add_argument("--accepted-risks", metavar="FILE",
+                   help="YAML register of findings accepted on purpose, with reason, "
+                        "approver and expiry date")
     c.add_argument("-v", "--verbose", action="store_true")
 
     ls = sub.add_parser("list-checks", help="List available checks (needs no credentials)")
@@ -122,13 +163,22 @@ def main(argv: list[str] | None = None) -> int:
             print(check_id)
         return 0
 
+    risks = _load_risks(args.accepted_risks)
     evidence = collect(sources, _split_regions(args.region), args.all_regions)
+    apply_accepted_risks(evidence, risks)
     paths = write_reports(evidence, load_mapping(args.mapping), args.out)
     _print_results(evidence)
-    failed = sum(e.status == Status.FAIL for e in evidence)
+    accepted = sum(is_accepted(e) for e in evidence)
+    failed = sum(e.status == Status.FAIL for e in evidence) - accepted
+    if failed or accepted or risks:
+        print()
+    _print_risk_notes(evidence, risks)
     if failed:
-        print(f"\n{failed} finding(s) to fix. The report lists the affected resources "
+        print(f"{failed} finding(s) to fix. The report lists the affected resources "
               f"and how to fix each one.")
+    if accepted:
+        print(f"{accepted} accepted risk(s). The report lists the reason, approver and "
+              f"expiry date of each.")
     print(f"\nMarkdown: {paths['markdown']}\nHTML:     {paths['html']}"
           f"\nJSON:     {paths['json']}")
 
