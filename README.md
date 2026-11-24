@@ -362,3 +362,9 @@ fix suggestion and a test. The pull request template has the full checklist.
 ## License
 
 MIT
+
+The HTML report uses a small subset of the color, shadow and radius tokens of
+[Open Props](https://open-props.style) 1.7.16 (MIT, Copyright (c) 2021 Adam
+Argyle). The subset and its license notice are in
+`src/iso27001_evidence/assets/open-props.css` and are inlined into every
+report, so the report still loads nothing from the internet.

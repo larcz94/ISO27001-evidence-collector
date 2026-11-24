@@ -300,119 +300,161 @@ def build_markdown(evidence: list[Evidence], mapping: dict) -> str:
 # One self-contained file: inline CSS, no scripts, no external files, so it can
 # be opened offline, attached to an audit ticket or printed to PDF.
 # Status colors are never the only signal: every badge also carries its label.
-HTML_STYLE = """
+#
+# The color, shadow and radius tokens come from Open Props (MIT), a CSS library
+# of design tokens. A small subset ships in assets/open-props.css and is
+# inlined here, so the report still loads nothing from the internet.
+OPEN_PROPS = resources.files("iso27001_evidence.assets").joinpath(
+    "open-props.css").read_text(encoding="utf-8")
+
+REPORT_STYLE = """
 :root {
-  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #4a4a47; --ink-3: #6f6e69;
-  --line: #e1e0d9; --line-2: #c3c2b7;
-  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
-  --neutral: #8a8a84; --info: #3d7dd8;
-  --good-bg: #e7f5e7; --warning-bg: #fef4dc; --serious-bg: #fdebe3; --critical-bg: #fae6e6;
-  --neutral-bg: #efeeea; --info-bg: #e6eefa; --fix-bg: #eef6ee;
+  --page: var(--gray-0); --surface: #fff; --ink: var(--gray-12); --ink-2: var(--gray-8);
+  --ink-3: var(--gray-7); --line: var(--gray-3); --line-2: var(--gray-5);
+  --good: var(--green-7); --warning: var(--yellow-6); --serious: var(--orange-7);
+  --critical: var(--red-8); --neutral: var(--gray-6); --info: var(--blue-7);
+  --accent: var(--violet-7); --low: var(--teal-7);
+  --good-bg: var(--green-0); --warning-bg: var(--yellow-0); --serious-bg: var(--orange-0);
+  --critical-bg: var(--red-0); --neutral-bg: var(--gray-1); --info-bg: var(--blue-0);
+  --accent-bg: var(--violet-0); --low-bg: var(--teal-0); --fix-bg: var(--green-0);
+  --hero: linear-gradient(120deg, var(--indigo-9), var(--violet-8) 55%, var(--pink-7));
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --ink-3: #9a9992;
-    --line: #2c2c2a; --line-2: #383835;
-    --good-bg: #12301a; --warning-bg: #3a2f10; --serious-bg: #3a231a; --critical-bg: #3a1a1a;
-    --neutral-bg: #262624; --info-bg: #16263d; --fix-bg: #14261a;
+    --page: #101114; --surface: #191b20; --ink: var(--gray-0); --ink-2: var(--gray-4);
+    --ink-3: var(--gray-5); --line: #2b2e35; --line-2: #3c4049;
+    --good: var(--green-5); --warning: var(--yellow-5); --serious: var(--orange-5);
+    --critical: var(--red-5); --neutral: var(--gray-6); --info: var(--blue-5);
+    --accent: var(--violet-4); --low: var(--teal-5);
+    --good-bg: #13291b; --warning-bg: #332a0e; --serious-bg: #3a2514; --critical-bg: #3b1719;
+    --neutral-bg: #24262b; --info-bg: #14253d; --accent-bg: #2a1d40; --low-bg: #10302c;
+    --fix-bg: #13291b;
+    --shadow-color: 220 40% 2%; --shadow-strength: 25%;
   }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--page); color: var(--ink); line-height: 1.5;
        font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; }
-.wrap { max-width: 64rem; margin: 0 auto; padding: 2rem 1rem 3rem; }
-header h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
-.sub { color: var(--ink-2); margin: 0; }
+.wrap { max-width: 64rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+header.hero { background: var(--hero); color: #fff; border-radius: var(--radius-3);
+              padding: 1.6rem 1.75rem 1.4rem; box-shadow: var(--shadow-3); }
+header h1 { font-size: 1.7rem; margin: 0 0 .25rem; }
+.sub { color: rgb(255 255 255 / .85); margin: 0; }
 .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
-        gap: .25rem 1.5rem; margin: 1rem 0 0; }
-.meta div { min-width: 0; }
-.meta dt { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em;
-           color: var(--ink-3); }
-.meta dd { margin: 0; overflow-wrap: anywhere; }
-h2 { font-size: 1.2rem; margin: 2.5rem 0 .75rem; }
+        gap: .5rem 1rem; margin: 1.1rem 0 0; }
+.meta div { min-width: 0; background: rgb(255 255 255 / .14); border-radius: var(--radius-2);
+            padding: .4rem .65rem; }
+.meta dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+           color: rgb(255 255 255 / .8); }
+.meta dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+h2 { font-size: 1.25rem; margin: 2.5rem 0 .75rem; padding-left: .7rem;
+     border-left: 5px solid var(--accent); }
 h3 { font-size: 1rem; margin: 0; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+        box-shadow: var(--shadow-1); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-         gap: .75rem; margin-top: 1.5rem; }
-.tile { padding: .9rem 1rem; }
-.tile .num { font-size: 2rem; font-weight: 650; line-height: 1.1; }
-.tile .lbl { color: var(--ink-2); font-size: .85rem; }
-.tile .hint { color: var(--ink-3); font-size: .75rem; }
-.tile.alert { border-top: 3px solid var(--critical); }
-.tile.ok { border-top: 3px solid var(--good); }
-.bar { display: flex; gap: 2px; height: 14px; margin: 1.25rem 0 .5rem; }
-.bar span { border-radius: 4px; min-width: 4px; }
+         gap: .75rem; margin-top: 1.25rem; }
+.tile { padding: .9rem 1rem; border-top: 5px solid var(--neutral); box-shadow: var(--shadow-2); }
+.tile .num { font-size: 2.1rem; font-weight: 700; line-height: 1.1; }
+.tile .lbl { color: var(--ink); font-size: .88rem; font-weight: 600; }
+.tile .hint { color: var(--ink-2); font-size: .75rem; }
+.tile.fail { border-top-color: var(--critical); background: var(--critical-bg); }
+.tile.fail .num { color: var(--critical); }
+.tile.ok, .tile.pass { border-top-color: var(--good); background: var(--good-bg); }
+.tile.ok .num, .tile.pass .num { color: var(--good); }
+.tile.acc { border-top-color: var(--info); background: var(--info-bg); }
+.tile.acc .num { color: var(--info); }
+.tile.na { border-top-color: var(--neutral); background: var(--neutral-bg); }
+.tile.err { border-top-color: var(--warning); background: var(--warning-bg); }
+.tile.ctl { border-top-color: var(--accent); background: var(--accent-bg); }
+.tile.ctl .num { color: var(--accent); }
+.bar { display: flex; gap: 3px; height: 16px; margin: 1.25rem 0 .5rem; }
+.bar span { border-radius: 5px; min-width: 5px; }
 .legend { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; font-size: .85rem;
           color: var(--ink-2); padding: 0; margin: 0; list-style: none; }
-.dot { display: inline-block; width: .65rem; height: .65rem; border-radius: 2px;
-       margin-right: .4rem; }
+.dot { display: inline-block; width: .7rem; height: .7rem; border-radius: 3px;
+       margin-right: .4rem; vertical-align: -1px; }
 .bg-PASS { background: var(--good); } .bg-FAIL { background: var(--critical); }
 .bg-ERROR { background: var(--warning); } .bg-NA { background: var(--neutral); }
 .bg-INFO { background: var(--info); } .bg-ACCEPTED { background: var(--info); }
 .badge { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
-         padding: .1rem .55rem; border-radius: 999px; font-size: .78rem; font-weight: 600;
-         color: var(--ink); background: var(--neutral-bg); }
+         padding: .12rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 700;
+         color: var(--ink); background: var(--neutral-bg); border: 1px solid var(--line-2); }
 .badge::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%;
                  background: var(--neutral); }
-.badge.PASS { background: var(--good-bg); } .badge.PASS::before { background: var(--good); }
-.badge.FAIL { background: var(--critical-bg); }
+.badge.PASS { background: var(--good-bg); border-color: var(--good); }
+.badge.PASS::before { background: var(--good); }
+.badge.FAIL { background: var(--critical-bg); border-color: var(--critical); }
 .badge.FAIL::before { background: var(--critical); }
-.badge.ERROR { background: var(--warning-bg); }
+.badge.ERROR { background: var(--warning-bg); border-color: var(--warning); }
 .badge.ERROR::before { background: var(--warning); }
-.badge.INFO { background: var(--info-bg); } .badge.INFO::before { background: var(--info); }
-.badge.critical { background: var(--critical-bg); }
-.badge.critical::before { background: var(--critical); }
-.badge.high { background: var(--serious-bg); }
-.badge.high::before { background: var(--serious); }
-.badge.medium { background: var(--warning-bg); }
-.badge.medium::before { background: var(--warning); }
+.badge.INFO { background: var(--info-bg); border-color: var(--info); }
+.badge.INFO::before { background: var(--info); }
+.badge.critical, .badge.high, .badge.medium, .badge.low { color: #fff;
+                                                           border-color: transparent; }
+.badge.critical::before, .badge.high::before, .badge.medium::before,
+.badge.low::before { background: #fff; }
+.badge.critical { background: var(--red-8); } .badge.high { background: var(--orange-9); }
+.badge.medium { background: var(--yellow-5); color: var(--gray-12); }
+.badge.medium::before { background: var(--gray-12); }
+.badge.low { background: var(--teal-8); }
 .muted { color: var(--ink-3); }
-.notice { color: var(--ink-2); border-left: 3px solid var(--line-2); padding: .1rem 0 .1rem .9rem;
-          margin: .75rem 0; }
-.finding { padding: 1rem 1.1rem; margin: .75rem 0; border-left: 4px solid var(--neutral);
+.notice { color: var(--ink-2); background: var(--accent-bg); border-left: 4px solid var(--accent);
+          border-radius: 0 var(--radius-2) var(--radius-2) 0; padding: .55rem .9rem;
+          margin: .9rem 0; }
+.finding { padding: 1rem 1.1rem; margin: .8rem 0; border-left: 6px solid var(--neutral);
            break-inside: avoid; }
 .finding.critical { border-left-color: var(--critical); }
 .finding.high { border-left-color: var(--serious); }
 .finding.medium { border-left-color: var(--warning); }
+.finding.low { border-left-color: var(--low); }
 .finding .top { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
 .finding .id, .accepted .id { color: var(--ink-3); font-size: .8rem; margin: .2rem 0 .6rem; }
 .finding dl { margin: 0; display: grid; grid-template-columns: 7.5rem 1fr; gap: .45rem 1rem; }
-.finding dt { color: var(--ink-3); font-size: .85rem; }
+.finding dt { color: var(--ink-3); font-size: .85rem; font-weight: 600; }
 .finding dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .finding ul { margin: 0; padding-left: 1.1rem; }
-.fix { background: var(--fix-bg); border-radius: 6px; padding: .5rem .75rem; }
-.risk-note { background: var(--warning-bg); border-radius: 6px; padding: .5rem .75rem; }
-.accepted { padding: .8rem 1.1rem; margin: .6rem 0; border-left: 4px solid var(--info);
-            break-inside: avoid; }
+.fix { background: var(--fix-bg); border-left: 3px solid var(--good);
+       border-radius: var(--radius-2); padding: .5rem .75rem; }
+.risk-note { background: var(--warning-bg); border-left: 3px solid var(--warning);
+             border-radius: var(--radius-2); padding: .5rem .75rem; }
+.accepted { padding: .8rem 1.1rem; margin: .6rem 0; border-left: 6px solid var(--info);
+            background: var(--info-bg); break-inside: avoid; }
 .accepted .top { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
 .accepted p { margin: .35rem 0 0; }
-.chip { display: inline-block; border: 1px solid var(--line-2); border-radius: 4px;
-        padding: 0 .4rem; font-size: .8rem; margin-right: .3rem; }
+.chip { display: inline-block; border-radius: 999px; padding: 0 .55rem; font-size: .8rem;
+        font-weight: 600; margin-right: .3rem; color: var(--indigo-9);
+        background: var(--indigo-0); border: 1px solid var(--indigo-3); }
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--line);
          vertical-align: top; }
-th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3);
-     font-weight: 600; }
+th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2);
+     font-weight: 700; background: var(--neutral-bg); }
 tr:last-child td { border-bottom: 0; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .scroll { overflow-x: auto; }
 code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .85em; }
-details.card { margin: .6rem 0; }
+details.card { margin: .6rem 0; overflow: hidden; }
 details summary { cursor: pointer; padding: .7rem 1rem; display: flex; align-items: center;
-                  gap: .75rem; font-weight: 600; }
+                  gap: .75rem; font-weight: 600; background: var(--neutral-bg); }
 details summary .grow { flex: 1; }
 details .body { border-top: 1px solid var(--line); }
-details .also { padding: .6rem 1rem; color: var(--ink-2); border-top: 1px solid var(--line); }
+details .also { padding: .6rem 1rem; color: var(--ink-2); border-top: 1px solid var(--line);
+                background: var(--accent-bg); }
 .small { font-size: .8rem; color: var(--ink-3); }
-footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line);
+footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 3px solid var(--accent);
          color: var(--ink-3); font-size: .85rem; }
 @media (max-width: 40rem) { .finding dl { grid-template-columns: 1fr; gap: .1rem; }
                             .finding dt { margin-top: .5rem; } }
 @media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { background: #fff; font-size: 12px; } .wrap { max-width: none; padding: 0; }
-  .card { border-color: #bbb; } h2 { break-after: avoid; } details { break-inside: avoid; }
+  .card { border-color: #bbb; box-shadow: none; } h2 { break-after: avoid; }
+  details { break-inside: avoid; }
 }
 """
+
+HTML_STYLE = OPEN_PROPS + REPORT_STYLE
 
 
 def _css(status: Status | str) -> str:
@@ -448,12 +490,12 @@ def _html_overview(evidence: list[Evidence], mapping: dict) -> list[str]:
     failed = counts[Status.FAIL] - risks
 
     out = ['<div class="tiles">',
-           _tile(failed, "Findings to fix", "failed checks", "alert" if failed else "ok"),
-           *([_tile(risks, "Accepted risks", "documented exceptions")] if risks else []),
-           _tile(counts[Status.PASS], "Passed"),
-           _tile(counts[Status.NOT_APPLICABLE], "Not applicable", "nothing to check"),
-           _tile(counts[Status.ERROR], "Could not run", "check permissions"),
-           _tile(with_gaps, "Controls with gaps", f"of {len(checked)} controls checked"),
+           _tile(failed, "Findings to fix", "failed checks", "fail" if failed else "ok"),
+           *([_tile(risks, "Accepted risks", "documented exceptions", "acc")] if risks else []),
+           _tile(counts[Status.PASS], "Passed", "", "pass"),
+           _tile(counts[Status.NOT_APPLICABLE], "Not applicable", "nothing to check", "na"),
+           _tile(counts[Status.ERROR], "Could not run", "check permissions", "err"),
+           _tile(with_gaps, "Controls with gaps", f"of {len(checked)} controls checked", "ctl"),
            "</div>"]
 
     # One bar for the split of all results. Labels and counts are in the legend,
@@ -576,7 +618,7 @@ def build_html(evidence: list[Evidence], mapping: dict) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
         f"<title>{escape(REPORT_TITLE)}</title>",
         f'<style>{HTML_STYLE}</style></head><body><div class="wrap">',
-        f"<header><h1>{escape(REPORT_TITLE)}</h1>",
+        f'<header class="hero"><h1>{escape(REPORT_TITLE)}</h1>',
         '<p class="sub">Automated, read-only evidence for Annex A controls</p>',
         '<dl class="meta">',
         f"<div><dt>Framework</dt><dd>{framework}</dd></div>",
