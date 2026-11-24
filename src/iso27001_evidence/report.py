@@ -12,6 +12,7 @@ from pathlib import Path
 import yaml
 
 from . import __version__
+from .accepted_risks import EXPIRED, PARTIAL, is_accepted
 from .models import SEVERITIES, Evidence, Status
 
 REPORT_TITLE = "ISO/IEC 27001:2022 Evidence Report"
@@ -19,6 +20,9 @@ DISCLAIMER = ("Automated evidence supports, but does not replace, documented pol
               "procedures and records. See the notes under each control.")
 FIX_NOTE = ("Fix suggestions are general guidance. Review them against your own "
             "policies and test before you change a production system.")
+ACCEPTED_NOTE = ("These findings are still gaps, so their status stays FAIL. They are "
+                 "listed here because the organization decided to accept them for a time. "
+                 "Review each one before it expires.")
 ERROR_NOTE = ("These checks could not run, so they prove nothing either way. The usual "
               "cause is a missing permission. Compare the role with the files in policies/.")
 
@@ -80,9 +84,36 @@ def _severity_rank(e: Evidence) -> int:
 
 
 def findings(evidence: list[Evidence]) -> list[Evidence]:
-    """Failed checks, worst severity first."""
-    failed = (e for e in evidence if e.status == Status.FAIL)
+    """Failed checks that still need fixing, worst severity first.
+
+    Accepted risks are left out. They are listed by accepted() instead.
+    """
+    failed = (e for e in evidence if e.status == Status.FAIL and not is_accepted(e))
     return sorted(failed, key=lambda e: (_severity_rank(e), e.check_id, e.region))
+
+
+def accepted(evidence: list[Evidence]) -> list[Evidence]:
+    """Failed checks covered by an active acceptance, soonest expiry first."""
+    return sorted((e for e in evidence if is_accepted(e)),
+                  key=lambda e: (e.accepted_risk["expires"], e.check_id, e.region))
+
+
+def risk_note(e: Evidence) -> str:
+    """One sentence about an acceptance that no longer covers a finding."""
+    risk = e.accepted_risk
+    if risk.get("state") == EXPIRED:
+        return f"An accepted risk for this finding expired on {risk['expires']}."
+    if risk.get("state") == PARTIAL:
+        return ("An accepted risk exists, but it does not name "
+                f"{', '.join(risk['not_covered'])}.")
+    return ""
+
+
+def acceptance_text(e: Evidence) -> str:
+    risk = e.accepted_risk
+    ticket = f", ticket {risk['ticket']}" if risk.get("ticket") else ""
+    return (f"Accepted by {risk['approved_by']} until {risk['expires']}{ticket}. "
+            f"Reason: {risk['reason']}")
 
 
 def errors(evidence: list[Evidence]) -> list[Evidence]:
@@ -120,7 +151,10 @@ def detail_rows(results: list[Evidence]) -> list[tuple[Status, str, str, str, st
                          f"collected {r.collected_at}, scope {r.scope}", r.title))
         else:
             region = f", region {r.region}" if r.region else ""
-            rows.append((r.status, r.check_id, r.summary,
+            text = r.summary
+            if is_accepted(r):
+                text += f" (risk accepted until {r.accepted_risk['expires']})"
+            rows.append((r.status, r.check_id, text,
                          f"collected {r.collected_at}, scope {r.scope}{region}", r.title))
     return rows
 
@@ -188,6 +222,16 @@ def _markdown_findings(evidence: list[Evidence], mapping: dict) -> list[str]:
             lines += [f"  - {item}" for item in items]
         if e.remediation:
             lines.append(f"- **How to fix:** {e.remediation}")
+        if risk_note(e):
+            lines.append(f"- **Note:** {risk_note(e)}")
+        lines.append("")
+    risks = accepted(evidence)
+    if risks:
+        lines += [f"## Accepted risks ({len(risks)})", "", f"> {ACCEPTED_NOTE}", ""]
+        for e in risks:
+            severity = f"[{e.severity.upper()}] " if e.severity else ""
+            lines += [f"- {severity}{e.title or e.check_id}{_where(e)} (`{e.check_id}`): "
+                      f"{e.summary}  ", f"  {acceptance_text(e)}"]
         lines.append("")
     if failed_to_run:
         lines += [f"## Checks that could not run ({len(failed_to_run)})", "",
@@ -214,6 +258,7 @@ def build_markdown(evidence: list[Evidence], mapping: dict) -> str:
         f"- **Checks run:** {len(evidence)} "
         f"(PASS {counts[Status.PASS]}, FAIL {counts[Status.FAIL]}, "
         f"ERROR {counts[Status.ERROR]}, N/A {counts[Status.NOT_APPLICABLE]})",
+        f"- **Accepted risks:** {len(accepted(evidence))} of the FAIL results",
         "",
         f"> {DISCLAIMER}",
         "",
@@ -299,7 +344,7 @@ h3 { font-size: 1rem; margin: 0; }
        margin-right: .4rem; }
 .bg-PASS { background: var(--good); } .bg-FAIL { background: var(--critical); }
 .bg-ERROR { background: var(--warning); } .bg-NA { background: var(--neutral); }
-.bg-INFO { background: var(--info); }
+.bg-INFO { background: var(--info); } .bg-ACCEPTED { background: var(--info); }
 .badge { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
          padding: .1rem .55rem; border-radius: 999px; font-size: .78rem; font-weight: 600;
          color: var(--ink); background: var(--neutral-bg); }
@@ -326,12 +371,17 @@ h3 { font-size: 1rem; margin: 0; }
 .finding.high { border-left-color: var(--serious); }
 .finding.medium { border-left-color: var(--warning); }
 .finding .top { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
-.finding .id { color: var(--ink-3); font-size: .8rem; margin: .2rem 0 .6rem; }
+.finding .id, .accepted .id { color: var(--ink-3); font-size: .8rem; margin: .2rem 0 .6rem; }
 .finding dl { margin: 0; display: grid; grid-template-columns: 7.5rem 1fr; gap: .45rem 1rem; }
 .finding dt { color: var(--ink-3); font-size: .85rem; }
 .finding dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .finding ul { margin: 0; padding-left: 1.1rem; }
 .fix { background: var(--fix-bg); border-radius: 6px; padding: .5rem .75rem; }
+.risk-note { background: var(--warning-bg); border-radius: 6px; padding: .5rem .75rem; }
+.accepted { padding: .8rem 1.1rem; margin: .6rem 0; border-left: 4px solid var(--info);
+            break-inside: avoid; }
+.accepted .top { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+.accepted p { margin: .35rem 0 0; }
 .chip { display: inline-block; border: 1px solid var(--line-2); border-radius: 4px;
         padding: 0 .4rem; font-size: .8rem; margin-right: .3rem; }
 table { border-collapse: collapse; width: 100%; }
@@ -361,7 +411,9 @@ footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line
 """
 
 
-def _css(status: Status) -> str:
+def _css(status: Status | str) -> str:
+    if isinstance(status, str) and not isinstance(status, Status):
+        return status   # "ACCEPTED" is a report-only group, not a check status
     return "NA" if status == Status.NOT_APPLICABLE else status.name
 
 
@@ -388,10 +440,12 @@ def _html_overview(evidence: list[Evidence], mapping: dict) -> list[str]:
                 for ctl in mapping.get("controls", {}).values()]
     checked = [s for s in statuses if s]
     with_gaps = sum(s == Status.FAIL for s in checked)
-    failed = counts[Status.FAIL]
+    risks = len(accepted(evidence))
+    failed = counts[Status.FAIL] - risks
 
     out = ['<div class="tiles">',
            _tile(failed, "Findings to fix", "failed checks", "alert" if failed else "ok"),
+           *([_tile(risks, "Accepted risks", "documented exceptions")] if risks else []),
            _tile(counts[Status.PASS], "Passed"),
            _tile(counts[Status.NOT_APPLICABLE], "Not applicable", "nothing to check"),
            _tile(counts[Status.ERROR], "Could not run", "check permissions"),
@@ -400,9 +454,11 @@ def _html_overview(evidence: list[Evidence], mapping: dict) -> list[str]:
 
     # One bar for the split of all results. Labels and counts are in the legend,
     # so the colors never carry the meaning alone.
-    order = [(Status.FAIL, "Failed"), (Status.ERROR, "Could not run"),
-             (Status.PASS, "Passed"), (Status.NOT_APPLICABLE, "Not applicable")]
-    parts = [(s, label, counts[s]) for s, label in order if counts[s]]
+    sizes = {**counts, Status.FAIL: failed, "ACCEPTED": risks}
+    order = [(Status.FAIL, "Failed"), ("ACCEPTED", "Accepted risk"),
+             (Status.ERROR, "Could not run"), (Status.PASS, "Passed"),
+             (Status.NOT_APPLICABLE, "Not applicable")]
+    parts = [(s, label, sizes[s]) for s, label in order if sizes.get(s)]
     if parts:
         out.append('<div class="bar" role="img" aria-label="Results by status">')
         out += [f'<span class="bg-{_css(s)}" style="flex:{n}" title="{escape(label)}: {n}">'
@@ -446,7 +502,22 @@ def _html_findings(evidence: list[Evidence], mapping: dict) -> list[str]:
         if e.remediation:
             out.append(f'<dt>How to fix</dt><dd><div class="fix">{escape(e.remediation)}'
                        f"</div></dd>")
+        if risk_note(e):
+            out.append(f'<dt>Note</dt><dd><div class="risk-note">{escape(risk_note(e))}'
+                       f"</div></dd>")
         out.append("</dl></div>")
+    risks = accepted(evidence)
+    if risks:
+        out.append(f"<h2>Accepted risks ({len(risks)})</h2>")
+        out.append(f'<p class="notice">{escape(ACCEPTED_NOTE)}</p>')
+        for e in risks:
+            out.append(f'<div class="card accepted"><div class="top">'
+                       f"{_severity_badge(e.severity)}"
+                       f"<h3>{escape(e.title or e.check_id)}</h3></div>"
+                       f'<div class="id"><code>{escape(e.check_id)}</code>'
+                       f"{escape(_where(e))}</div>"
+                       f"<p>{escape(e.summary)}</p>"
+                       f'<p class="small">{escape(acceptance_text(e))}</p></div>')
     if failed_to_run:
         out.append(f"<h2>Checks that could not run ({len(failed_to_run)})</h2>")
         out.append(f'<p class="notice">{escape(ERROR_NOTE)}</p><div class="card scroll"><table>')

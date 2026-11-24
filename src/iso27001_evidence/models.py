@@ -31,6 +31,9 @@ class Evidence:
     severity: str = ""                # critical, high, medium or low
     scope: str = ""                   # e.g. AWS account ID / tenant ID
     region: str = ""                  # e.g. "eu-west-3", or "global" for account-wide checks
+    # Set when the accepted risk register matches this result. "state" is
+    # "accepted", "expired" or "partial". Empty when nothing matched.
+    accepted_risk: dict[str, Any] = field(default_factory=dict)
     collected_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
     )
