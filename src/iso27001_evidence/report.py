@@ -13,7 +13,7 @@ import yaml
 
 from . import __version__
 from .accepted_risks import EXPIRED, PARTIAL, is_accepted
-from .models import SEVERITIES, Evidence, Status
+from .models import REGION_NOT_ENABLED, SEVERITIES, Evidence, Status
 
 REPORT_TITLE = "ISO/IEC 27001:2022 Evidence Report"
 DISCLAIMER = ("Automated evidence supports, but does not replace, documented policies, "
@@ -131,23 +131,27 @@ def detail_rows(results: list[Evidence]) -> list[tuple[Status, str, str, str, st
 
     When a check found nothing to check in several regions, those N/A results
     become one row that names the regions. A run over all regions would
-    otherwise be mostly "nothing here" lines.
+    otherwise be mostly "nothing here" lines. Regions that are not enabled for
+    the account get their own row, because they were not checked at all.
     """
-    not_applicable: dict[str, list[Evidence]] = {}
+    not_applicable: dict[tuple[str, bool], list[Evidence]] = {}
     for r in results:
         if r.status == Status.NOT_APPLICABLE:
-            not_applicable.setdefault(r.check_id, []).append(r)
+            key = (r.check_id, r.summary == REGION_NOT_ENABLED)
+            not_applicable.setdefault(key, []).append(r)
 
     rows, collapsed = [], set()
     for r in results:
-        group = not_applicable.get(r.check_id, [])
-        if r.status == Status.NOT_APPLICABLE and len(group) > 1:
-            if r.check_id in collapsed:
+        key = (r.check_id, r.summary == REGION_NOT_ENABLED)
+        group = not_applicable.get(key, [])
+        if r.status == Status.NOT_APPLICABLE and (len(group) > 1 or key[1]):
+            if key in collapsed:
                 continue
-            collapsed.add(r.check_id)
+            collapsed.add(key)
             names = ", ".join(sorted(x.region for x in group))
-            rows.append((r.status, r.check_id,
-                         f"Nothing to check in {len(group)} regions: {names}",
+            text = (f"Not checked, region not enabled for this account: {names}" if key[1]
+                    else f"Nothing to check in {len(group)} regions: {names}")
+            rows.append((r.status, r.check_id, text,
                          f"collected {r.collected_at}, scope {r.scope}", r.title))
         else:
             region = f", region {r.region}" if r.region else ""

@@ -10,6 +10,12 @@ from typing import Any
 # Worst first. Used to sort findings in reports.
 SEVERITIES = ("critical", "high", "medium", "low")
 
+# Summary of an N/A result in a region the account has not enabled (opt-in
+# regions). The report lists these regions apart from regions that were checked
+# and were empty, because "not checked" and "nothing found" are different evidence.
+REGION_NOT_ENABLED = ("Region not enabled for this account (opt-in region), so nothing "
+                      "can run there. Enable it in the account settings if you use it.")
+
 
 class Status(str, Enum):
     PASS = "PASS"            # control requirement met
