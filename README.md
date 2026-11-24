@@ -299,6 +299,13 @@ pytest -q
 As an ISMS lead and DevOps engineer, I found that most audit effort goes into
 collecting evidence, not fixing gaps. This project automates the collection part.
 
+## Articles
+
+A series on AWS Builder Center about turning AWS findings into ISO 27001
+evidence an auditor can use:
+
+1. [Security Hub findings are not audit evidence yet: five questions your ISO 27001 auditor will ask](https://builder.aws.com/content/3MYtB6KqHU72A2d8oQdvl3V504J/security-hub-findings-are-not-audit-evidence-yet-five-questions-your-iso-27001-auditor-will-ask)
+
 ## How this compares to Prowler and AWS Audit Manager
 
 This is a small tool with a narrow goal. Bigger tools exist, and for many
