@@ -52,6 +52,18 @@ def test_html_report_escapes_untrusted_values():
     assert "&lt;script&gt;" in html
 
 
+def test_html_report_is_one_offline_file_with_the_css_library_inlined():
+    ev = [Evidence(check_id="lightsail.bucket.public_access", source="lightsail",
+                   status=Status.PASS, summary="All buckets are private")]
+    html = build_html(ev, load_mapping()).lower()
+    # Nothing that runs code or loads a file from somewhere else.
+    for banned in ("<script", "<link", "url(", "@import", "http://", "https://"):
+        assert banned not in html, banned
+    # The Open Props tokens are inside the file, with the MIT license notice.
+    assert "--indigo-9:" in html and "open props 1.7.16" in html
+    assert "mit license" in html and "adam argyle" in html
+
+
 @mock_aws
 def test_list_checks_all_lists_every_source(capsys):
     assert main(["list-checks", "--source", "all"]) == 0

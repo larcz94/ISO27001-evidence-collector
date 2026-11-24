@@ -25,7 +25,7 @@ from .accepted_risks import (
     load_accepted_risks,
 )
 from .collectors import AVAILABLE, collector_class, get_collector
-from .models import Evidence, Status
+from .models import REGION_NOT_ENABLED, Evidence, Status
 from .report import load_mapping, write_reports
 
 
@@ -61,6 +61,28 @@ def _all_regions(source: str) -> list[str]:
         ) from exc
 
 
+# Error codes AWS returns when a region is not enabled for the account. New
+# accounts have the opt-in regions (for example ap-east-1) switched off, and any
+# call there fails as if the credentials were wrong.
+_REGION_DISABLED_ERRORS = ("UnrecognizedClientException", "InvalidClientTokenId",
+                           "AuthFailure")
+_UNKNOWN_SCOPE = "aws:unknown"
+
+
+def _region_not_enabled(results: list[Evidence]) -> bool:
+    """True when every check in a region failed only because the region is off."""
+    return bool(results) and all(
+        e.status == Status.ERROR and any(code in e.summary for code in _REGION_DISABLED_ERRORS)
+        for e in results)
+
+
+def _mark_region_not_enabled(results: list[Evidence]) -> None:
+    for e in results:
+        e.status = Status.NOT_APPLICABLE
+        e.summary = REGION_NOT_ENABLED
+        e.details = {}
+
+
 def collect(sources: list[str], regions: list[str], all_regions: bool) -> list[Evidence]:
     """Run every source in every requested region and return all evidence.
 
@@ -73,13 +95,33 @@ def collect(sources: list[str], regions: list[str], all_regions: bool) -> list[E
         if not targets:
             targets = [None]   # let boto3 pick the default region
         scope = None
+        source_evidence: list[Evidence] = []
+        global_done = False
         for index, region in enumerate(targets):
             if len(targets) > 1:
                 print(f"Checking {source} in {region} ({index + 1}/{len(targets)})",
                       file=sys.stderr)
             collector = get_collector(source, region=region, scope=scope)
-            scope = collector.scope   # look the account ID up once per source
-            evidence += collector.run(include_global=index == 0)
+            # Look the account ID up once per source. If the lookup failed (for
+            # example in a region that is not enabled), try again in the next one.
+            if collector.scope and collector.scope != _UNKNOWN_SCOPE:
+                scope = collector.scope
+            results = collector.run(include_global=not global_done)
+            # Only skip regions the user did not name. A region asked for with
+            # --region stays an ERROR, so a typo or a real problem is visible.
+            if all_regions and _region_not_enabled(results):
+                print(f"Skipped {region}: not enabled for this account", file=sys.stderr)
+                # Account-wide checks did not run here, so run them in the next region.
+                _mark_region_not_enabled(results)
+                results = [e for e in results if e.region != "global"]
+            else:
+                global_done = True
+            source_evidence += results
+        if scope:
+            for e in source_evidence:
+                if e.scope in ("", _UNKNOWN_SCOPE):
+                    e.scope = scope
+        evidence += source_evidence
     return evidence
 
 

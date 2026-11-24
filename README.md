@@ -186,6 +186,14 @@ the region list (`lightsail:GetRegions` or `ec2:DescribeRegions`, both in the
 read-only policies) and takes longer, since every region is a separate set of
 API calls.
 
+Some regions, such as ap-east-1, are opt-in: a new AWS account has them
+switched off. `--all-regions` skips a region that is not enabled for your
+account and lists it in the report as "Not checked, region not enabled".
+That line is kept apart from "Nothing to check", because a region that was
+not looked at is different evidence from a region that was looked at and
+was empty. A region you name with `--region` is never skipped: if it is not
+enabled, the checks show ERROR.
+
 ### Permissions
 
 The tool never changes anything. Give the user or role that runs it only the
@@ -354,3 +362,9 @@ fix suggestion and a test. The pull request template has the full checklist.
 ## License
 
 MIT
+
+The HTML report uses a small subset of the color, shadow and radius tokens of
+[Open Props](https://open-props.style) 1.7.16 (MIT, Copyright (c) 2021 Adam
+Argyle). The subset and its license notice are in
+`src/iso27001_evidence/assets/open-props.css` and are inlined into every
+report, so the report still loads nothing from the internet.

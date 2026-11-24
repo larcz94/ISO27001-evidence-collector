@@ -160,6 +160,70 @@ def test_selected_regions_are_checked_in_the_given_order(fake_source):
         ("eu-west-3", Status.FAIL), ("ap-south-1", Status.NOT_APPLICABLE)]
 
 
+class FakeOptIn(FakeRegional):
+    """ap-east-1 is an opt-in region that is not enabled for this account."""
+
+    @classmethod
+    def available_regions(cls, session=None):
+        return ["ap-east-1", "eu-west-3"]
+
+    def __init__(self, region=None, scope=None):
+        super().__init__(region=region, scope=scope)
+        # The account ID lookup (STS) also fails in a region that is off.
+        if region == "ap-east-1" and scope is None:
+            self.scope = "aws:unknown"
+
+    @check("fake.instance.snapshots")
+    def snapshots(self) -> Evidence:
+        if self.region == "ap-east-1":
+            raise RuntimeError(
+                "ClientError: An error occurred (UnrecognizedClientException) when calling "
+                "the GetInstances operation: The security token included in the request "
+                "is invalid.")
+        return super().snapshots()
+
+
+@pytest.fixture
+def opt_in_source(monkeypatch):
+    FakeRegional.created = []
+    monkeypatch.setattr(cli, "collector_class", lambda source: FakeOptIn)
+    monkeypatch.setattr(cli, "get_collector", lambda source, **kw: FakeOptIn(**kw))
+
+
+def test_all_regions_skips_a_region_that_is_not_enabled(opt_in_source, capsys):
+    evidence = cli.collect(["fake"], [], all_regions=True)
+    off = [e for e in evidence if e.region == "ap-east-1"]
+    assert [e.status for e in off] == [Status.NOT_APPLICABLE]
+    assert "not enabled for this account" in off[0].summary
+    assert "Skipped ap-east-1" in capsys.readouterr().err
+
+
+def test_report_lists_regions_not_enabled_apart_from_empty_regions(opt_in_source):
+    from iso27001_evidence.report import detail_rows
+
+    evidence = cli.collect(["fake"], [], all_regions=True)
+    evidence.append(Evidence("fake.instance.snapshots", "fake", Status.NOT_APPLICABLE,
+                             "No instances in ap-south-1", region="ap-south-1"))
+    evidence.append(Evidence("fake.instance.snapshots", "fake", Status.NOT_APPLICABLE,
+                             "No instances in us-east-1", region="us-east-1"))
+    texts = [row[2] for row in detail_rows(evidence)]
+    assert "Not checked, region not enabled for this account: ap-east-1" in texts
+    assert "Nothing to check in 2 regions: ap-south-1, us-east-1" in texts
+
+
+def test_named_region_that_is_not_enabled_stays_an_error(opt_in_source):
+    evidence = cli.collect(["fake"], ["ap-east-1"], all_regions=False)
+    assert [e.status for e in evidence] == [Status.ERROR]
+
+
+def test_account_id_is_found_even_if_the_first_region_is_off(opt_in_source):
+    evidence = cli.collect(["fake"], [], all_regions=True)
+    # The lookup failed in ap-east-1, so it is done again in eu-west-3 and
+    # every result gets the real account, not "aws:unknown".
+    assert {e.scope for e in evidence} == {"aws:123456789012"}
+    assert FakeRegional.created == [("ap-east-1", None), ("eu-west-3", None)]
+
+
 def test_multi_region_console_output_hides_empty_regions(fake_source, tmp_path, capsys):
     main(["collect", "--source", "aws", "--all-regions", "--out", str(tmp_path)])
     out = capsys.readouterr().out

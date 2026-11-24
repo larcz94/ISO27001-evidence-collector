@@ -37,6 +37,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "iso27001_evidence.mappings" = ["*.yaml"]
+"iso27001_evidence.assets" = ["*.css"]
 
 [tool.ruff]
 line-length = 100
